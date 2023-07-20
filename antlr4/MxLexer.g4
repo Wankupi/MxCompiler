@@ -47,7 +47,6 @@ Add: '+';
 Minus: '-';
 
 // 2 operators
-// OpArith: Add | Minus | Minus | Div | Mod;
 Multi: '*';
 Div: '/';
 Mod: '%';

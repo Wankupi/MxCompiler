@@ -1,5 +1,7 @@
 .idea/
 gen/
 antlr4/MxLexer.tokens
-antlr4/.antlr4/*
+antlr4/.antlr/
 **test**
+out/
+src/MxParser

@@ -4,14 +4,20 @@ options {
 	tokenVocab = MxLexer;
 }
 
-test: expression;
-
 file: (defineFunction | defineClass | defineVariableStmt)* EOF;
 
-defineClass: Class Identifier '{' '}';
+defineClass:
+	Class Identifier '{' (
+		defineVariableStmt
+		| defineFunction
+		| constructFunction
+	)* '}' ';';
 
 defineFunction:
 	typename Identifier '(' functionParameterList? ')' '{' stmt* '}';
+
+constructFunction:
+	Identifier '(' functionParameterList? ')' '{' stmt* '}';
 
 defineVariable: typename Identifier;
 
@@ -21,7 +27,13 @@ suite: stmt | ('{' stmt* '}');
 
 simpleStmt: (exprList? ';');
 
-stmt: simpleStmt | ifStmt | whileStmt | forStmt | flowStmt | defineVariableStmt;
+stmt:
+	simpleStmt
+	| ifStmt
+	| whileStmt
+	| forStmt
+	| flowStmt
+	| defineVariableStmt;
 
 ifStmt:
 	'if' '(' expression ')' suite (
@@ -43,42 +55,30 @@ variableAssign: Identifier ('=' expression)?;
 exprList: expression (',' expression)*;
 
 expression:
-	'(' exprList ')'
-	| expression '[' exprList ']'
-	| expression '(' exprList? ')'
-	| expression '.' Identifier
-	| expression '++'
-	| expression '--'
-	| <assoc = right> '++' expression
-	| <assoc = right> '--' expression
-	| <assoc = right> '~' expression
-	| <assoc = right> '!' expression
-	| <assoc = right> '+' expression
-	| <assoc = right> '-' expression
-	| expression '*' expression
-	| expression '/' expression
-	| expression '%' expression
-	| expression '+' expression
-	| expression '-' expression
-	| expression '<<' expression
-	| expression '>>' expression
-	| expression '<' expression
-	| expression '>' expression
-	| expression '<=' expression
-	| expression '>=' expression
-	| expression '==' expression
-	| expression '!=' expression
-	| expression '&' expression
-	| expression '^' expression
-	| expression '|' expression
-	| expression '&&' expression
-	| expression '||' expression
-	| <assoc = right> expression '?' expression ':' expression
-	| <assoc = right> expression '=' expression
-	| literalExpr
-	| Identifier;
+	'(' exprList ')'											# WrapExpr
+	| expression '[' exprList ']'								# ArrayAccess
+	| expression '(' exprList? ')'								# FuncCall
+	| expression '.' Identifier									# MemberAccess
+	| expression op = ('++' | '--')								# SelfUpdate
+	| <assoc = right> op = ('++' | '--') expression				# SelfUpdate
+	| <assoc = right> op = ('+' | '-' | '!' | '~') expression	# SingleExpr
+	| 'new' typename											# NewExpr
+	| expression op = ('*' | '/' | '%') expression				# BinaryExpr
+	| expression op = ('+' | '-') expression					# BinaryExpr
+	| expression op = ('<<' | '>>') expression					# BinaryExpr
+	| expression op = ('<' | '<=' | '>' | '>=') expression		# CmpExpr
+	| expression op = ('==' | '!=') expression					# CmpExpr
+	| expression op = '&' expression							# BinaryExpr
+	| expression op = '^' expression							# BinaryExpr
+	| expression op = '|' expression							# BinaryExpr
+	| expression op = '&&' expression							# BinaryExpr
+	| expression op = '||' expression							# BinaryExpr
+	| <assoc = right> expression '?' expression ':' expression	# CondExpr
+	| <assoc = right> expression '=' expression					# AssignExpr
+	| literalExpr												# LiterExpr
+	| Identifier												# AtomExpr;
 
-typename: BasicType;
+typename: (BasicType | Identifier) ('[' Number? ']')*;
 
 literalExpr: Number | String | Null | True | False;
 
