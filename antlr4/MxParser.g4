@@ -14,16 +14,17 @@ defineClass:
 	)* '}' ';';
 
 defineFunction:
-	typename Identifier '(' functionParameterList? ')' '{' stmt* '}';
+	typename Identifier '(' functionParameterList? ')' block;
 
 constructFunction:
-	Identifier '(' functionParameterList? ')' '{' stmt* '}';
+	Identifier '(' functionParameterList? ')' block;
 
 defineVariable: typename Identifier;
 
 functionParameterList: defineVariable (',' defineVariable)*;
 
-suite: stmt | ('{' stmt* '}');
+suite: stmt | block;
+block: '{' stmt* '}';
 
 simpleStmt: (exprList? ';');
 
@@ -33,7 +34,8 @@ stmt:
 	| whileStmt
 	| forStmt
 	| flowStmt
-	| defineVariableStmt;
+	| defineVariableStmt
+	| block;
 
 ifStmt:
 	'if' '(' expression ')' suite (
@@ -43,9 +45,9 @@ ifStmt:
 whileStmt: 'while' '(' expression ')' suite;
 
 forStmt:
-	'for' '(' expression ';' expression ';' expression ')' suite;
+	'for' '(' start = expression? ';' condition = expression? ';' step = expression? ')' suite;
 
-flowStmt: ('continue' | 'break' | ('return' expression)) ';';
+flowStmt: ('continue' | 'break' | ('return' expression?)) ';';
 
 defineVariableStmt:
 	typename variableAssign (',' variableAssign)* ';';
@@ -78,7 +80,7 @@ expression:
 	| literalExpr												# LiterExpr
 	| Identifier												# AtomExpr;
 
-typename: (BasicType | Identifier) ('[' Number? ']')*;
+typename: (BasicType | Identifier) ('[' Number ']')* ('[' ']')*;
 
 literalExpr: Number | String | Null | True | False;
 
