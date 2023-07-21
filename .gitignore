@@ -1,7 +1,10 @@
+.vscode/
 .idea/
-gen/
+cmake-build-debug/
+build/
 antlr4/MxLexer.tokens
 antlr4/.antlr/
 **test**
 out/
-src/MxParser
+MxAntlr/*
+!MxAntlr/CMakeLists.txt

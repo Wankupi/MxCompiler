@@ -61,15 +61,15 @@ expression:
 	| expression '[' exprList ']'								# ArrayAccess
 	| expression '(' exprList? ')'								# FuncCall
 	| expression '.' Identifier									# MemberAccess
-	| expression op = ('++' | '--')								# SelfUpdate
-	| <assoc = right> op = ('++' | '--') expression				# SelfUpdate
+	| expression op = ('++' | '--')								# SingleExpr
+	| <assoc = right> op = ('++' | '--') expression				# SingleExpr
 	| <assoc = right> op = ('+' | '-' | '!' | '~') expression	# SingleExpr
 	| 'new' typename											# NewExpr
 	| expression op = ('*' | '/' | '%') expression				# BinaryExpr
 	| expression op = ('+' | '-') expression					# BinaryExpr
 	| expression op = ('<<' | '>>') expression					# BinaryExpr
-	| expression op = ('<' | '<=' | '>' | '>=') expression		# CmpExpr
-	| expression op = ('==' | '!=') expression					# CmpExpr
+	| expression op = ('<' | '<=' | '>' | '>=') expression		# BinaryExpr
+	| expression op = ('==' | '!=') expression					# BinaryExpr
 	| expression op = '&' expression							# BinaryExpr
 	| expression op = '^' expression							# BinaryExpr
 	| expression op = '|' expression							# BinaryExpr
