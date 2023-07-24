@@ -23,13 +23,13 @@ defineVariable: typename Identifier;
 
 functionParameterList: defineVariable (',' defineVariable)*;
 
-suite: stmt | block;
+suite: block | stmt; // block first to avoid suite->stmt->block
 block: '{' stmt* '}';
 
-simpleStmt: (exprList? ';');
+exprStmt: (exprList? ';');
 
 stmt:
-	simpleStmt
+	exprStmt
 	| ifStmt
 	| whileStmt
 	| forStmt
@@ -45,7 +45,7 @@ ifStmt:
 whileStmt: 'while' '(' expression ')' suite;
 
 forStmt:
-	'for' '(' start = expression? ';' condition = expression? ';' step = expression? ')' suite;
+	'for' '(' init = expression? ';' condition = expression? ';' step = expression? ')' suite;
 
 flowStmt: ('continue' | 'break' | ('return' expression?)) ';';
 
@@ -57,30 +57,32 @@ variableAssign: Identifier ('=' expression)?;
 exprList: expression (',' expression)*;
 
 expression:
-	'(' exprList ')'											# WrapExpr
-	| expression '[' exprList ']'								# ArrayAccess
-	| expression '(' exprList? ')'								# FuncCall
-	| expression '.' Identifier									# MemberAccess
-	| expression op = ('++' | '--')								# SingleExpr
-	| <assoc = right> op = ('++' | '--') expression				# SingleExpr
-	| <assoc = right> op = ('+' | '-' | '!' | '~') expression	# SingleExpr
-	| 'new' typename											# NewExpr
-	| expression op = ('*' | '/' | '%') expression				# BinaryExpr
-	| expression op = ('+' | '-') expression					# BinaryExpr
-	| expression op = ('<<' | '>>') expression					# BinaryExpr
-	| expression op = ('<' | '<=' | '>' | '>=') expression		# BinaryExpr
-	| expression op = ('==' | '!=') expression					# BinaryExpr
-	| expression op = '&' expression							# BinaryExpr
-	| expression op = '^' expression							# BinaryExpr
-	| expression op = '|' expression							# BinaryExpr
-	| expression op = '&&' expression							# BinaryExpr
-	| expression op = '||' expression							# BinaryExpr
-	| <assoc = right> expression '?' expression ':' expression	# CondExpr
-	| <assoc = right> expression '=' expression					# AssignExpr
-	| literalExpr												# LiterExpr
-	| Identifier												# AtomExpr;
+	'(' exprList ')'													# WrapExpr
+	| expression '[' expression ']'										# ArrayAccess
+	| expression '(' exprList? ')'										# FuncCall
+	| expression '.' Identifier											# MemberAccess
+	| expression op = ('++' | '--')										# RightSingleExpr
+	| <assoc = right> op = ('++' | '--') expression						# LeftSingleExpr
+	| <assoc = right> op = ('+' | '-' | '!' | '~') expression			# LeftSingleExpr
+	| 'new' typename													# NewExpr
+	| lhs = expression op = ('*' | '/' | '%') rhs = expression			# BinaryExpr
+	| lhs = expression op = ('+' | '-') rhs = expression				# BinaryExpr
+	| lhs = expression op = ('<<' | '>>') rhs = expression				# BinaryExpr
+	| lhs = expression op = ('<' | '<=' | '>' | '>=') rhs = expression	# BinaryExpr
+	| lhs = expression op = ('==' | '!=') rhs = expression				# BinaryExpr
+	| lhs = expression op = '&' rhs = expression						# BinaryExpr
+	| lhs = expression op = '^' rhs = expression						# BinaryExpr
+	| lhs = expression op = '|' rhs = expression						# BinaryExpr
+	| lhs = expression op = '&&' rhs = expression						# BinaryExpr
+	| lhs = expression op = '||' rhs = expression						# BinaryExpr
+	| <assoc = right> expression '?' expression ':' expression			# TernaryExpr
+	| <assoc = right> expression '=' expression							# AssignExpr
+	| literalExpr														# LiterExpr
+	| Identifier														# AtomExpr;
 
-typename: (BasicType | Identifier) ('[' Number ']')* ('[' ']')*;
+typename: (BasicType | Identifier) ('[' good = expression ']')* (
+		'[' ']'
+	)* ('[' bad = expression ']')*;
 
 literalExpr: Number | String | Null | True | False;
 

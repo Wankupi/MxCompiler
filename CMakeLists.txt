@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.20)
 project(MxCompiler)
 
-# set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/out")
-
-include_directories(/usr/include/antlr4-runtime/)
-include_directories(MxAntlr/)
+set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(MxAntlr)
 
-file(GLOB_RECURSE sources src/*.cpp)
+include_directories(/usr/include/antlr4-runtime/)
+include_directories(MxAntlr/)
+include_directories(src/)
+
+file(GLOB_RECURSE sources src/*.cpp src/*.h)
+
 add_executable(code ${sources})
 
 target_link_libraries(code MxAntlr)
