@@ -57,7 +57,7 @@ variableAssign: Identifier ('=' expression)?;
 exprList: expression (',' expression)*;
 
 expression:
-	'(' exprList ')'													# WrapExpr
+	'(' expression ')'													# WrapExpr
 	| expression '[' expression ']'										# ArrayAccess
 	| expression '(' exprList? ')'										# FuncCall
 	| expression '.' Identifier											# MemberAccess
@@ -80,9 +80,9 @@ expression:
 	| literalExpr														# LiterExpr
 	| Identifier														# AtomExpr;
 
-typename: (BasicType | Identifier) ('[' good = expression ']')* (
+typename: (BasicType | Identifier) ('[' good += expression ']')* (
 		'[' ']'
-	)* ('[' bad = expression ']')*;
+	)* ('[' bad += expression ']')*;
 
 literalExpr: Number | String | Null | True | False;
 

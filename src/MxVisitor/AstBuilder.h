@@ -38,6 +38,8 @@ public:
 	std::any visitTernaryExpr(MxParser::TernaryExprContext *ctx) override;
 	/// @return AstExprNode*
 	std::any visitAssignExpr(MxParser::AssignExprContext *ctx) override;
+	std::any visitWrapExpr(MxParser::WrapExprContext *ctx) override;
+
 	/// @return AstExprNode*
 	std::any visitFuncCall(MxParser::FuncCallContext *ctx) override;
 	/// @return AstExprNode*

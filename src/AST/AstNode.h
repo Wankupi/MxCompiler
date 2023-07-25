@@ -45,15 +45,29 @@ struct AstBlockStmtNode : public AstStmtNode {
 		std::cout << "}";
 	}
 };
+struct AstExprNode : public AstNode {
+	using AstNode::AstNode;
+	std::string NodeType() override {
+		return "AstExprNode";
+	}
+};
 
 struct AstTypeNode : public AstNode {
-	// TODO: support array type
 	std::string name;
+	std::vector<AstExprNode *> arraySize;
+	size_t dimension = 0;
 	std::string NodeType() override {
 		return "AstTypeNode";
 	}
 	void print() override {
 		std::cout << "\033[32m" << name << "\033[0m";
+		for (auto size: arraySize) {
+			std::cout << "\033[32m[\033[0m";
+			size->print();
+			std::cout << "\033[32m]\033[0m";
+		}
+		for (auto i = arraySize.size(); i < dimension; ++i)
+			std::cout << "\033[32m[]\033[0m";
 	}
 };
 
@@ -69,12 +83,6 @@ struct AstFuncParamNode : public AstNode {
 	}
 };
 
-struct AstExprNode : public AstNode {
-	using AstNode::AstNode;
-	std::string NodeType() override {
-		return "AstExprNode";
-	}
-};
 
 struct AstArrayAccessExprNode : public AstExprNode {
 	AstExprNode *array = nullptr;

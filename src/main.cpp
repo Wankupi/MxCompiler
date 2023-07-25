@@ -9,13 +9,17 @@
 
 int main() {
 	antlr4::ANTLRInputStream input(std::cin);
+	MxParserErrorListener errorListener;
+
 	MxLexer lexer(&input);
+	lexer.removeErrorListeners();
+	lexer.addErrorListener(&errorListener);
+
 	antlr4::CommonTokenStream tokens(&lexer);
 	MxParser parser(&tokens);
-
-	MxParserErrorListener errorListener;
 	parser.removeErrorListeners();
 	parser.addErrorListener(&errorListener);
+
 	auto tree = parser.file();
 
 	AstBuilder builder;

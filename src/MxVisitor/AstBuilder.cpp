@@ -187,8 +187,22 @@ std::any AstBuilder::visitNewExpr(MxParser::NewExprContext *ctx) {
 }
 
 std::any AstBuilder::visitTypename(MxParser::TypenameContext *ctx) {
+	if (!ctx->bad.empty())
+		throw std::runtime_error(__FUNCTION__ + std::string(": bad type name: ") + ctx->getText());
 	auto node = new AstTypeNode{};
-	node->name = ctx->getText();
+	if (auto id = ctx->Identifier(); id)
+		node->name = id->getText();
+	else
+		node->name = ctx->BasicType()->getText();
+	node->dimension = ctx->BracketLeft().size();
+	auto list = ctx->good;
+	node->arraySize.reserve(list.size());
+	for (auto expr: list) {
+		auto visRes = visit(expr);
+		if (!visRes.has_value()) throw std::runtime_error(__FUNCTION__ + std::string(": bad array size"));
+		auto val = std::any_cast<AstExprNode *>(visRes);
+		node->arraySize.emplace_back(val);
+	}
 	return node;
 }
 
@@ -315,7 +329,7 @@ std::any AstBuilder::visitIfStmt(MxParser::IfStmtContext *ctx) {
 			throw std::runtime_error(__FUNCTION__);
 		node->elseStmt = std::move(*std::any_cast<std::vector<AstStmtNode *>>(&visRes));
 	}
-	return static_cast<AstStmtNode*>(node);
+	return static_cast<AstStmtNode *>(node);
 }
 
 std::any AstBuilder::visitTernaryExpr(MxParser::TernaryExprContext *ctx) {
@@ -325,4 +339,8 @@ std::any AstBuilder::visitTernaryExpr(MxParser::TernaryExprContext *ctx) {
 	node->trueExpr = std::any_cast<AstExprNode *>(visit(exprs[1]));
 	node->falseExpr = std::any_cast<AstExprNode *>(visit(exprs[2]));
 	return static_cast<AstExprNode *>(node);
+}
+
+std::any AstBuilder::visitWrapExpr(MxParser::WrapExprContext *ctx) {
+	return visit(ctx->expression());
 }

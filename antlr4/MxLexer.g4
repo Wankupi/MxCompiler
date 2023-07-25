@@ -82,5 +82,5 @@ Semicolon: ';';
 Number: Digit+;
 fragment Digit: [0-9];
 
-Identifier: [A-Za-z_][A-Za-z_0-9]*;
+Identifier: [A-Za-z][A-Za-z_0-9]*;
 
