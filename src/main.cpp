@@ -1,14 +1,18 @@
-#include "AST/AST.h"
+#include "antlr4-runtime.h"
+
 #include "MxLexer.h"
 #include "MxParser.h"
-#include "MxVisitor/AstBuilder.h"
 #include "MxVisitor/MxParserErrorListener.h"
-#include "Scope.h"
-#include "antlr4-runtime.h"
+
+#include "AST/AstNode.h"
+#include "MxVisitor/AstBuilder.h"
+
+#include "Semantic/ClassCollector.h"
+
 #include <iostream>
 
-int main() {
-	antlr4::ANTLRInputStream input(std::cin);
+AstNode *getAST(std::istream &in) {
+	antlr4::ANTLRInputStream input(in);
 	MxParserErrorListener errorListener;
 
 	MxLexer lexer(&input);
@@ -26,10 +30,23 @@ int main() {
 	auto visit_result = builder.visit(tree);
 
 	if (!visit_result.has_value())
-		return 1;
-	auto ast = std::any_cast<AstNode *>(visit_result);
-	std::cout << ast << std::endl;
-	ast->print();
+		throw std::runtime_error("AST build failed");
+	return std::any_cast<AstNode *>(visit_result);
+}
 
+int main() {
+	try {
+		auto ast = getAST(std::cin);
+		ast->print();
+
+		GlobalScope globalScope;
+
+		ClassCollector classCollector(&globalScope);
+		classCollector.visit(ast);
+
+	} catch (std::exception &e) {
+		std::cerr << e.what() << std::endl;
+		return 1;
+	}
 	return 0;
 }
