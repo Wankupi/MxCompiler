@@ -3,7 +3,7 @@
 #include "MxParserBaseVisitor.h"
 
 class AstBuilder : public MxParserBaseVisitor {
-public:
+private:
 	/// @return AstNode*
 	std::any visitFile(MxParser::FileContext *ctx) override;
 	/// @return AstNode*
@@ -38,8 +38,8 @@ public:
 	std::any visitTernaryExpr(MxParser::TernaryExprContext *ctx) override;
 	/// @return AstExprNode*
 	std::any visitAssignExpr(MxParser::AssignExprContext *ctx) override;
+	/// @return AstExprNode*
 	std::any visitWrapExpr(MxParser::WrapExprContext *ctx) override;
-
 	/// @return AstExprNode*
 	std::any visitFuncCall(MxParser::FuncCallContext *ctx) override;
 	/// @return AstExprNode*

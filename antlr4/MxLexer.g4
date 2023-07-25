@@ -82,5 +82,6 @@ Semicolon: ';';
 Number: Digit+;
 fragment Digit: [0-9];
 
+BuiltinId: 'this';
 Identifier: [A-Za-z][A-Za-z_0-9]*;
 

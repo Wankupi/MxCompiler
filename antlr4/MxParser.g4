@@ -79,7 +79,7 @@ expression:
 	| <assoc = right> expression '?' expression ':' expression			# TernaryExpr
 	| <assoc = right> expression '=' expression							# AssignExpr
 	| literalExpr														# LiterExpr
-	| Identifier														# AtomExpr;
+	| (Identifier | BuiltinId)											# AtomExpr;
 
 typename: (BasicType | Identifier) ('[' good += expression ']')* (
 		'[' ']'

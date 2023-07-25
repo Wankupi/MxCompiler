@@ -90,7 +90,7 @@ std::any AstBuilder::visitBlock(MxParser::BlockContext *ctx) {
 
 std::any AstBuilder::visitAtomExpr(MxParser::AtomExprContext *ctx) {
 	auto node = new AstAtomExprNode{};
-	node->name = ctx->Identifier()->getText();
+	node->name = ctx->getText();
 	return static_cast<AstExprNode *>(node);
 }
 
