@@ -45,7 +45,8 @@ ifStmt:
 whileStmt: 'while' '(' expression ')' suite;
 
 forStmt:
-	'for' '(' init = expression? ';' condition = expression? ';' step = expression? ')' suite;
+	'for' '(' (exprStmt | defineVariableStmt)? condition = expression? ';' step = expression? ')'
+		suite;
 
 flowStmt: ('continue' | 'break' | ('return' expression?)) ';';
 

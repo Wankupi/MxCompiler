@@ -357,7 +357,8 @@ struct AstNewExprNode : public AstExprNode {
 
 
 struct AstForStmtNode : public AstStmtNode {
-	AstExprNode *init = nullptr, *cond = nullptr, *step = nullptr;
+	AstStmtNode *init = nullptr;
+	AstExprNode *cond = nullptr, *step = nullptr;
 	std::vector<AstStmtNode *> body;
 	std::string NodeType() override {
 		return "AstForStmtNode";
@@ -366,7 +367,7 @@ struct AstForStmtNode : public AstStmtNode {
 		std::cout << "for (";
 		if (init)
 			init->print();
-		std::cout << "; ";
+		std::cout << (init ? " " : "; ");
 		if (cond)
 			cond->print();
 		std::cout << "; ";

@@ -224,11 +224,18 @@ std::any AstBuilder::visitMemberAccess(MxParser::MemberAccessContext *ctx) {
 
 std::any AstBuilder::visitForStmt(MxParser::ForStmtContext *ctx) {
 	auto node = new AstForStmtNode{};
-	if (auto init = ctx->init; init) {
+	if (auto init = ctx->exprStmt(); init) {
 		auto visRes = visit(init);
 		if (!visRes.has_value())
 			throw std::runtime_error(__FUNCTION__);
-		auto val = std::any_cast<AstExprNode *>(visRes);
+		auto val = std::any_cast<AstStmtNode *>(visRes);
+		node->init = val;
+	}
+	if (auto init = ctx->defineVariableStmt(); init) {
+		auto visRes = visit(init);
+		if (!visRes.has_value())
+			throw std::runtime_error(__FUNCTION__);
+		auto val = std::any_cast<AstStmtNode *>(visRes);
 		node->init = val;
 	}
 	if (auto cond = ctx->condition; cond) {
