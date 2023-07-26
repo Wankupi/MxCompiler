@@ -8,6 +8,9 @@
 #include "MxVisitor/AstBuilder.h"
 
 #include "Semantic/ClassCollector.h"
+#include "Semantic/FunctionCollector.h"
+#include "Semantic/Scope.h"
+
 
 #include <iostream>
 
@@ -37,12 +40,16 @@ AstNode *getAST(std::istream &in) {
 int main() {
 	try {
 		auto ast = getAST(std::cin);
-		ast->print();
 
 		GlobalScope globalScope;
 
 		ClassCollector classCollector(&globalScope);
+		classCollector.init_builtin_classes();
 		classCollector.visit(ast);
+
+		FunctionCollector functionCollector(&globalScope);
+		functionCollector.init_builtin_functions();
+		functionCollector.visit(ast);
 
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;

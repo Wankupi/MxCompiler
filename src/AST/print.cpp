@@ -25,11 +25,6 @@ void AstTypeNode::print() {
 		std::cout << "\033[32m[]\033[0m";
 }
 
-void AstFuncParamNode::print() {
-	type->print();
-	std::cout << ' ' << name;
-}
-
 void AstArrayAccessExprNode::print() {
 	array->print();
 	std::cout << '[';
@@ -66,7 +61,8 @@ void AstFunctionNode::print() {
 	for (auto param: params) {
 		if (!first)
 			std::cout << ", ";
-		param->print();
+		param.first->print();
+		std::cout << " " << param.second;
 		first = false;
 	}
 	std::cout << ") ";
@@ -79,7 +75,8 @@ void AstConstructFuncNode::print() {
 	for (auto param: params) {
 		if (!first)
 			std::cout << ", ";
-		param->print();
+		param.first->print();
+		std::cout << " " << param.second;
 		first = false;
 	}
 	std::cout << ") ";

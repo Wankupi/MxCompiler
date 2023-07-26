@@ -2,83 +2,104 @@
 
 #include "MxException.h"
 #include <map>
-#include <utility>
+#include <string>
 #include <vector>
 
 struct Type;
+struct Scope;
+struct GlobalScope;
 
-struct ScopeInterface {
-	virtual Type *query(std::string const &name) = 0;
+struct TypeInfo {
+public:
+	Type *basicType = nullptr;
+	size_t dimension;
+	bool isConst;
+
+public:
+	bool operator==(TypeInfo const &rhs) const {
+		return basicType == rhs.basicType && dimension == rhs.dimension;
+	}
+	bool assignable(TypeInfo const &rhs) const {
+		if (isConst) return false;
+		return *this == rhs;
+	}
+	std::string to_string() const;
+	TypeInfo get_member(std::string const &member_name, GlobalScope *scope);
 };
 
 struct Type {
-	explicit Type(std::string name) : name{std::move(name)} {}
 	std::string name;
-	bool isConst = false;
-	virtual Type *get_member(std::string const &name) = 0;
-	virtual bool operator==(Type const &rhs) const = 0;
-	[[nodiscard]] virtual bool assignable(Type const &rhs) const = 0;
+
+public:
+	~Type() = default;
+	virtual std::string to_string() const = 0;
+	virtual TypeInfo get_member(std::string const &member_name) = 0;
 };
 
-struct ObjectType : public Type {
-	explicit ObjectType(std::string name) : Type{std::move(name)} {}
-	std::map<std::string, Type *> vars;// include functions
+struct ClassType : public Type {
+	Scope *scope = nullptr;
 
-	Type *get_member(std::string const &member) override {
-		if (auto it = vars.find(member); it != vars.end())
-			return it->second;
-		else
-			throw semantic_error("no such member in class(" + this->name + "): " + member);
-	}
-	bool operator==(Type const &rhs) const override {
-		auto r = dynamic_cast<ObjectType const *>(&rhs);
-		if (r == nullptr) return false;
-		return this->name == r->name;
-	}
-	[[nodiscard]] bool assignable(Type const &rhs) const override {
-		auto r = dynamic_cast<ObjectType const *>(&rhs);
-		if (r == nullptr) return false;
-		return this->name == r->name;
-	}
+public:
+	std::string to_string() const override { return name; }
+	TypeInfo get_member(const std::string &member_name) override;
 };
 
 struct FuncType : public Type {
-	FuncType(std::string name, Type *returnType, std::vector<Type *> args)
-		: Type{std::move(name)}, returnType{returnType}, args{std::move(args)} {}
-	Type *returnType = nullptr;
-	std::vector<Type *> args;
-	Type *get_member(std::string const &) override {
-		throw semantic_error("function has no members.");
-	}
+	TypeInfo returnType;
+	std::vector<TypeInfo> args;
+
+public:
+	std::string to_string() const override;
+	TypeInfo get_member(const std::string &member_name) override;
 };
 
-struct ArrayType : public Type {
-	static FuncType *const func_size;
-	Type *baseType = nullptr;
-	int dimension = 0;
-	Type *get_member(std::string const &member) override {
-		if (member == "size")
-			return func_size;
-		else
-			throw semantic_error("array can only access member size.");
+class Scope {
+	friend int main();
+private:
+	Scope *fatherScope = nullptr;
+	std::vector<Scope *> subScopes;
+
+protected:
+	std::map<std::string, TypeInfo> vars;
+	std::map<std::string, FuncType *> funcs;
+	static constexpr const char *const ArrayFuncPrefix = "__array__";
+
+public:
+	~Scope() {
+		for (auto &scope: subScopes)
+			delete scope;
+		subScopes.clear();
 	}
+	Scope *add_sub_scope() {
+		auto *scope = new Scope;
+		scope->fatherScope = this;
+		subScopes.push_back(scope);
+		return scope;
+	}
+
+	void add_variable(std::string const &name, TypeInfo const &type) ;
+
+	TypeInfo query_variable(std::string const &name);
+
+	void add_function(FuncType &&func);
+	void add_function_for_array(FuncType &&func);
+	TypeInfo query_function_for_array(std::string const &func_name);
 };
 
-struct Scope {
-	Scope *fatherScope;
-	std::map<std::string, Type *> vars;
-};
+class GlobalScope : public Scope {
+	friend int main();
+	std::map<std::string, ClassType *> types;
 
-struct GlobalScope : public Scope {
-	void add_class(std::string const &name, ObjectType *type) {
-		if (types.contains(name))
-			throw semantic_error("class redefinition: " + name);
-		types[name] = type;
+public:
+	~GlobalScope() {
+		for (auto &type: types)
+			delete type.second;
+		types.clear();
+		for (auto &func: funcs)
+			delete func.second;
+		funcs.clear();
 	}
-	void add_function(std::string const &name, FuncType *type) {
-		if (types.contains(name))
-			throw semantic_error("function redefinition: " + name);
-		vars[name] = type;
-	}
-	std::map<std::string, Type *> types;
+
+	Type *add_class(std::string const &name);
+	ClassType *query_class(std::string const &name);
 };

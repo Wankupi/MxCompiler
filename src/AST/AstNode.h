@@ -25,17 +25,6 @@ struct AstTypeNode : public AstNode {
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitTypeNode(this); }
 };
 
-struct AstFuncParamNode : public AstNode {
-	AstTypeNode *type;
-	std::string name;
-	std::string NodeType() override {
-		return "AstFuncParamNode";
-	}
-	void print() override;
-	void accept(AstBaseVisitor *visitor) override { return visitor->visitFuncParamNode(this); }
-};
-
-
 struct AstArrayAccessExprNode : public AstExprNode {
 	AstExprNode *array = nullptr;
 	AstExprNode *index = nullptr;
@@ -169,7 +158,7 @@ struct AstVarStmtNode : public AstStmtNode {
 struct AstFunctionNode : public AstNode {
 	AstTypeNode *returnType;
 	std::string name;
-	std::vector<AstFuncParamNode *> params;
+	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	AstStmtNode *body;
 	std::string NodeType() override {
 		return "AstFunctionNode";
@@ -180,7 +169,7 @@ struct AstFunctionNode : public AstNode {
 
 struct AstConstructFuncNode : public AstNode {
 	std::string name;
-	std::vector<AstFuncParamNode *> params;
+	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	AstStmtNode *body;
 	std::string NodeType() override {
 		return "AstConstructFuncNode";

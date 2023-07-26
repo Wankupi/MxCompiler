@@ -59,19 +59,17 @@ std::any AstBuilder::visitDefineFunction(MxParser::DefineFunctionContext *ctx) {
 	node->returnType = std::any_cast<AstTypeNode *>(visit(ctx->typename_()));
 	if (auto list = ctx->functionParameterList(); list) {
 		auto params = visit(list);
-		node->params = std::move(*std::any_cast<std::vector<AstFuncParamNode *>>(&params));
+		node->params = std::move(*std::any_cast<std::vector<std::pair<AstTypeNode *, std::string>>>(&params));
 	}
 	node->body = std::any_cast<AstStmtNode *>(visit(ctx->block()));
 	return node;
 }
 
 std::any AstBuilder::visitFunctionParameterList(MxParser::FunctionParameterListContext *ctx) {
-	std::vector<AstFuncParamNode *> params;
+	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	for (auto param: ctx->defineVariable()) {
-		auto node = new AstFuncParamNode{};
-		node->name = param->Identifier()->getText();
-		node->type = std::any_cast<AstTypeNode *>(visit(param->typename_()));
-		params.push_back(node);
+		auto type = std::any_cast<AstTypeNode *>(visit(param->typename_()));
+		params.emplace_back(type, param->Identifier()->getText());
 	}
 	return params;
 }
@@ -310,7 +308,7 @@ std::any AstBuilder::visitConstructFunction(MxParser::ConstructFunctionContext *
 	node->name = ctx->Identifier()->getText();
 	if (auto list = ctx->functionParameterList(); list) {
 		auto params = visit(list);
-		node->params = std::move(*std::any_cast<std::vector<AstFuncParamNode *>>(&params));
+		node->params = std::move(*std::any_cast<std::vector<std::pair<AstTypeNode *, std::string>>>(&params));
 	}
 	node->body = std::any_cast<AstStmtNode *>(visit(ctx->block()));
 	return node;
