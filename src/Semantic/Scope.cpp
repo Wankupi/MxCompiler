@@ -66,7 +66,7 @@ void Scope::add_function_for_array(FuncType &&func) {
 		throw semantic_error("function redefinition: " + id);
 	auto funcP = new FuncType(std::move(func));
 	funcs[id] = funcP;
-	vars[ArrayFuncPrefix + funcP->name] = {funcP, 1, true};
+	vars[ArrayFuncPrefix + funcP->name] = {funcP, 0, true};
 }
 
 TypeInfo Scope::query_function_for_array(const std::string &func_name) {

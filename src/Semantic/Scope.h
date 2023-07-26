@@ -55,6 +55,7 @@ public:
 
 class Scope {
 	friend int main();
+
 private:
 	Scope *fatherScope = nullptr;
 	std::vector<Scope *> subScopes;
@@ -65,10 +66,13 @@ protected:
 	static constexpr const char *const ArrayFuncPrefix = "__array__";
 
 public:
-	~Scope() {
+	virtual ~Scope() {
 		for (auto &scope: subScopes)
 			delete scope;
 		subScopes.clear();
+		for (auto &func: funcs)
+			delete func.second;
+		funcs.clear();
 	}
 	Scope *add_sub_scope() {
 		auto *scope = new Scope;
@@ -77,7 +81,7 @@ public:
 		return scope;
 	}
 
-	void add_variable(std::string const &name, TypeInfo const &type) ;
+	void add_variable(std::string const &name, TypeInfo const &type);
 
 	TypeInfo query_variable(std::string const &name);
 
@@ -91,13 +95,10 @@ class GlobalScope : public Scope {
 	std::map<std::string, ClassType *> types;
 
 public:
-	~GlobalScope() {
+	~GlobalScope() override {
 		for (auto &type: types)
 			delete type.second;
 		types.clear();
-		for (auto &func: funcs)
-			delete func.second;
-		funcs.clear();
 	}
 
 	Type *add_class(std::string const &name);

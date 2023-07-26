@@ -22,10 +22,11 @@ std::any AstBuilder::visitFile(MxParser::FileContext *ctx) {
 }
 
 std::any AstBuilder::visitBinaryExpr(MxParser::BinaryExprContext *ctx) {
-	ctx->op->getText();
+	auto node = new AstBinaryExprNode{};
+	node->op = ctx->op->getText();
 	auto l = visit(ctx->lhs), r = visit(ctx->rhs);
-	auto *left = std::any_cast<AstExprNode *>(l), *right = std::any_cast<AstExprNode *>(r);
-	auto node = new AstBinaryExprNode{ctx->op->getText(), left, right};
+	node->lhs = std::any_cast<AstExprNode *>(l);
+	node->rhs = std::any_cast<AstExprNode *>(r);
 	return static_cast<AstExprNode *>(node);
 }
 

@@ -7,7 +7,8 @@
 #include "Declaration.h"
 
 struct AstExprNode : public AstNode {
-	Type *valueType = nullptr;
+	TypeInfo valueType;
+	~AstExprNode() override = default;
 	std::string NodeType() override {
 		return "AstExprNode";
 	}
@@ -18,6 +19,9 @@ struct AstTypeNode : public AstNode {
 	std::string name;
 	std::vector<AstExprNode *> arraySize;
 	size_t dimension = 0;
+	~AstTypeNode() override {
+		for (auto &size: arraySize) delete size;
+	}
 	std::string NodeType() override {
 		return "AstTypeNode";
 	}
@@ -28,6 +32,10 @@ struct AstTypeNode : public AstNode {
 struct AstArrayAccessExprNode : public AstExprNode {
 	AstExprNode *array = nullptr;
 	AstExprNode *index = nullptr;
+	~AstArrayAccessExprNode() override {
+		delete array;
+		delete index;
+	}
 	std::string NodeType() override {
 		return "AstArrayAccessExprNode";
 	}
@@ -38,6 +46,9 @@ struct AstArrayAccessExprNode : public AstExprNode {
 struct AstMemberAccessExprNode : public AstExprNode {
 	AstExprNode *object = nullptr;
 	std::string member;
+	~AstMemberAccessExprNode() override {
+		delete object;
+	}
 	std::string NodeType() override {
 		return "AstMemberAccessExprNode";
 	}
@@ -46,10 +57,12 @@ struct AstMemberAccessExprNode : public AstExprNode {
 };
 
 struct AstBinaryExprNode : public AstExprNode {
-	AstBinaryExprNode(std::string op, AstExprNode *lhs, AstExprNode *rhs)
-		: AstExprNode(), op(std::move(op)), lhs(lhs), rhs(rhs) {}
 	std::string op;
 	AstExprNode *lhs, *rhs;
+	~AstBinaryExprNode() override {
+		delete lhs;
+		delete rhs;
+	}
 	std::string NodeType() override {
 		return "AstBinaryExprNode";
 	}
@@ -59,6 +72,7 @@ struct AstBinaryExprNode : public AstExprNode {
 
 struct AstAtomExprNode : public AstExprNode {
 	std::string name;
+	~AstAtomExprNode() override = default;
 	std::string NodeType() override {
 		return "AstAtomExprNode";
 	}
@@ -70,6 +84,10 @@ struct AstAssignExprNode : public AstExprNode {
 	// only support '=' now
 	// std::string op;
 	AstExprNode *lhs = nullptr, *rhs = nullptr;
+	~AstAssignExprNode() override {
+		delete lhs;
+		delete rhs;
+	}
 	std::string NodeType() override {
 		return "AstAssignExprNode";
 	}
@@ -79,6 +97,7 @@ struct AstAssignExprNode : public AstExprNode {
 
 struct AstLiterExprNode : public AstExprNode {
 	std::string value;
+	~AstLiterExprNode() override = default;
 	std::string NodeType() override {
 		return "AstLiterExprNode";
 	}
@@ -89,6 +108,10 @@ struct AstLiterExprNode : public AstExprNode {
 struct AstFuncCallExprNode : public AstExprNode {
 	AstExprNode *func = nullptr;
 	std::vector<AstExprNode *> args;
+	~AstFuncCallExprNode() override {
+		delete func;
+		for (auto &arg: args) delete arg;
+	}
 	std::string NodeType() override {
 		return "AstCallExprNode";
 	}
@@ -101,6 +124,9 @@ struct AstFuncCallExprNode : public AstExprNode {
  */
 struct AstNewExprNode : public AstExprNode {
 	AstTypeNode *type = nullptr;
+	~AstNewExprNode() override {
+		delete type;
+	}
 	std::string NodeType() override {
 		return "AstNewExprNode";
 	}
@@ -112,6 +138,9 @@ struct AstSingleExprNode : public AstExprNode {
 	AstExprNode *expr = nullptr;
 	std::string op;
 	bool right = false;
+	~AstSingleExprNode() override {
+		delete expr;
+	}
 	std::string NodeType() override {
 		return "AstSingleExprNode";
 	}
@@ -121,6 +150,11 @@ struct AstSingleExprNode : public AstExprNode {
 
 struct AstTernaryExprNode : public AstExprNode {
 	AstExprNode *cond = nullptr, *trueExpr = nullptr, *falseExpr = nullptr;
+	~AstTernaryExprNode() override {
+		delete cond;
+		delete trueExpr;
+		delete falseExpr;
+	}
 	std::string NodeType() override {
 		return "AstTernaryExprNode";
 	}
@@ -130,6 +164,7 @@ struct AstTernaryExprNode : public AstExprNode {
 
 struct AstStmtNode : public AstNode {
 	using AstNode::AstNode;
+	~AstStmtNode() override = default;
 	std::string NodeType() override {
 		return "AstStmtNode";
 	}
@@ -138,6 +173,9 @@ struct AstStmtNode : public AstNode {
 
 struct AstBlockStmtNode : public AstStmtNode {
 	std::vector<AstStmtNode *> stmts;
+	~AstBlockStmtNode() override {
+		for (auto &stmt: stmts) delete stmt;
+	}
 	std::string NodeType() override {
 		return "AstBlockStmtNode";
 	}
@@ -148,6 +186,10 @@ struct AstBlockStmtNode : public AstStmtNode {
 struct AstVarStmtNode : public AstStmtNode {
 	AstTypeNode *type;
 	std::vector<std::pair<std::string, AstExprNode *>> vars;
+	~AstVarStmtNode() override {
+		delete type;
+		for (auto &var: vars) delete var.second;
+	}
 	std::string NodeType() override {
 		return "AstVariableNode";
 	}
@@ -160,6 +202,11 @@ struct AstFunctionNode : public AstNode {
 	std::string name;
 	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	AstStmtNode *body;
+	~AstFunctionNode() override {
+		delete returnType;
+		for (auto &param: params) delete param.first;
+		delete body;
+	}
 	std::string NodeType() override {
 		return "AstFunctionNode";
 	}
@@ -171,6 +218,10 @@ struct AstConstructFuncNode : public AstNode {
 	std::string name;
 	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	AstStmtNode *body;
+	~AstConstructFuncNode() override {
+		for (auto &param: params) delete param.first;
+		delete body;
+	}
 	std::string NodeType() override {
 		return "AstConstructFuncNode";
 	}
@@ -183,6 +234,11 @@ struct AstClassNode : public AstNode {
 	std::vector<AstVarStmtNode *> variables;
 	std::vector<AstConstructFuncNode *> constructors;
 	std::vector<AstFunctionNode *> functions;
+	~AstClassNode() override {
+		for (auto &var: variables) delete var;
+		for (auto &constructor: constructors) delete constructor;
+		for (auto &function: functions) delete function;
+	}
 	std::string NodeType() override {
 		return "AstClassNode";
 	}
@@ -192,6 +248,9 @@ struct AstClassNode : public AstNode {
 
 struct AstExprStmtNode : public AstStmtNode {
 	std::vector<AstExprNode *> expr;
+	~AstExprStmtNode() override {
+		for (auto &e: expr) delete e;
+	}
 	std::string NodeType() override {
 		return "AstExprStmtNode";
 	}
@@ -200,6 +259,7 @@ struct AstExprStmtNode : public AstStmtNode {
 };
 
 struct AstFlowStmtNode : public AstStmtNode {
+	~AstFlowStmtNode() override = default;
 	std::string NodeType() override {
 		return "AstFlowStmtNode";
 	}
@@ -208,6 +268,9 @@ struct AstFlowStmtNode : public AstStmtNode {
 
 struct AstReturnStmtNode : public AstFlowStmtNode {
 	AstExprNode *expr = nullptr;
+	~AstReturnStmtNode() override {
+		delete expr;
+	}
 	std::string NodeType() override {
 		return "AstReturnStmtNode";
 	}
@@ -216,6 +279,7 @@ struct AstReturnStmtNode : public AstFlowStmtNode {
 };
 
 struct AstBreakStmtNode : public AstFlowStmtNode {
+	~AstBreakStmtNode() override = default;
 	std::string NodeType() override {
 		return "AstBreakStmtNode";
 	}
@@ -224,6 +288,7 @@ struct AstBreakStmtNode : public AstFlowStmtNode {
 };
 
 struct AstContinueStmtNode : public AstFlowStmtNode {
+	~AstContinueStmtNode() override = default;
 	std::string NodeType() override {
 		return "AstContinueStmtNode";
 	}
@@ -235,6 +300,12 @@ struct AstForStmtNode : public AstStmtNode {
 	AstStmtNode *init = nullptr;
 	AstExprNode *cond = nullptr, *step = nullptr;
 	std::vector<AstStmtNode *> body;
+	~AstForStmtNode() override {
+		delete init;
+		delete cond;
+		delete step;
+		for (auto &stmt: body) delete stmt;
+	}
 	std::string NodeType() override {
 		return "AstForStmtNode";
 	}
@@ -245,6 +316,10 @@ struct AstForStmtNode : public AstStmtNode {
 struct AstWhileStmtNode : public AstStmtNode {
 	AstExprNode *cond = nullptr;
 	std::vector<AstStmtNode *> body;
+	~AstWhileStmtNode() override {
+		delete cond;
+		for (auto &stmt: body) delete stmt;
+	}
 	std::string NodeType() override {
 		return "AstWhileStmtNode";
 	}
@@ -255,6 +330,13 @@ struct AstWhileStmtNode : public AstStmtNode {
 struct AstIfStmtNode : public AstStmtNode {
 	std::vector<std::pair<AstExprNode *, std::vector<AstStmtNode *>>> ifStmts;
 	std::vector<AstStmtNode *> elseStmt;
+	~AstIfStmtNode() override {
+		for (auto &stmt: ifStmts) {
+			delete stmt.first;
+			for (auto &s: stmt.second) delete s;
+		}
+		for (auto &stmt: elseStmt) delete stmt;
+	}
 	std::string NodeType() override {
 		return "AstIfStmtNode";
 	}
@@ -265,6 +347,9 @@ struct AstIfStmtNode : public AstStmtNode {
 struct AstFileNode final : public AstNode {
 	using AstNode::AstNode;
 	std::vector<AstNode *> children;
+	~AstFileNode() override {
+		for (auto &child: children) delete child;
+	}
 	std::string NodeType() override {
 		return "AstFileNode";
 	}
