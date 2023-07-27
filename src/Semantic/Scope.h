@@ -71,9 +71,6 @@ public:
 };
 
 class Scope {
-	friend int main();
-	friend class SemanticChecker;
-
 private:
 	Scope *fatherScope = nullptr;
 	std::vector<Scope *> subScopes;
@@ -109,8 +106,6 @@ public:
 };
 
 class GlobalScope : public Scope {
-	friend class SemanticChecker;
-	friend int main();
 	std::map<std::string, ClassType *> types;
 
 public:

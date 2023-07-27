@@ -17,9 +17,15 @@
 
 AstNode *getAST(std::istream &in);
 
-int main() {
+int main(int argc, char *argv[]) {
 	try {
-		AST ast{getAST(std::cin)};
+		AST ast(nullptr);
+		if (argc > 1) {
+			std::ifstream in(argv[1]);
+			ast.root = getAST(in);
+		}
+		else
+			ast.root = getAST(std::cin);
 
 		GlobalScope globalScope;
 
