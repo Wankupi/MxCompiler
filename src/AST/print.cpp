@@ -223,33 +223,9 @@ void AstIfStmtNode::print() {
 			std::cout << "\nelse if (";
 		cur->first->print();
 		std::cout << ") ";
-		if (cur->second.empty())
-			std::cout << ";";
-		else if (cur->second.size() == 1)
-			cur->second[0]->print();
-		else {
-			std::cout << "{\n";
-			for (auto stmt: cur->second) {
-				stmt->print();
-				std::cout << "\n";
-			}
-			std::cout << "}";
-		}
-		std::cout << "";
+		cur->second->print();
 	}
-	if (!elseStmt.empty()) {
-		std::cout << "\nelse ";
-		if (elseStmt.size() == 1)
-			elseStmt[0]->print();
-		else {
-			std::cout << "{\n";
-			for (auto stmt: elseStmt) {
-				stmt->print();
-				std::cout << "\n";
-			}
-			std::cout << "}";
-		}
-	}
+	elseStmt->print();
 }
 
 void AstTernaryExprNode::print() {

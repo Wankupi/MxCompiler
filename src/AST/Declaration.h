@@ -20,7 +20,6 @@ public:
 
 struct AstExprNode;
 struct AstTypeNode;
-struct AstFuncParamNode;
 struct AstArrayAccessExprNode;
 struct AstMemberAccessExprNode;
 struct AstBinaryExprNode;

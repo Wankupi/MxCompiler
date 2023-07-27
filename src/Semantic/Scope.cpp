@@ -29,6 +29,12 @@ bool TypeInfo::is_string() const {
 bool TypeInfo::is_bool() const {
 	return basicType && basicType->name == "bool" && dimension == 0;
 }
+bool TypeInfo::is_basic() const {
+	return basicType && (basicType->name == "int" || basicType->name == "string" || basicType->name == "bool" || basicType->name == "void") && dimension == 0;
+}
+bool TypeInfo::is_void() const {
+	return basicType && basicType->name == "void" && dimension == 0;
+}
 
 TypeInfo ClassType::get_member(const std::string &member_name) {
 	if (!scope) throw semantic_error("class has no member: " + name + "." + member_name);
@@ -109,4 +115,8 @@ ClassType *GlobalScope::query_class(const std::string &name) {
 		return it->second;
 	else
 		throw semantic_error("class not found: " + name);
+}
+
+bool GlobalScope::has_class(const std::string &name) {
+	return types.contains(name);
 }

@@ -225,10 +225,10 @@ std::any AstBuilder::visitForStmt(MxParser::ForStmtContext *ctx) {
 	auto node = new AstForStmtNode{};
 	if (auto init = ctx->exprStmt(); init) {
 		auto visRes = visit(init);
-		if (!visRes.has_value())
-			throw std::runtime_error(__FUNCTION__);
-		auto val = std::any_cast<AstStmtNode *>(visRes);
-		node->init = val;
+		if (visRes.has_value()) {
+			auto val = std::any_cast<AstStmtNode *>(visRes);
+			node->init = val;
+		}
 	}
 	if (auto init = ctx->defineVariableStmt(); init) {
 		auto visRes = visit(init);
@@ -327,13 +327,16 @@ std::any AstBuilder::visitIfStmt(MxParser::IfStmtContext *ctx) {
 		visRes = visit(bodies[i]);
 		if (!visRes.has_value())
 			throw std::runtime_error(__FUNCTION__);
-		node->ifStmts.emplace_back(val, std::move(*std::any_cast<std::vector<AstStmtNode *>>(&visRes)));
+		auto block = new AstBlockStmtNode{};
+		block->stmts = std::move(*std::any_cast<std::vector<AstStmtNode *>>(&visRes));
+		node->ifStmts.emplace_back(val, block);
 	}
 	if (exprs.size() < bodies.size()) {
 		auto visRes = visit(bodies.back());
 		if (!visRes.has_value())
 			throw std::runtime_error(__FUNCTION__);
-		node->elseStmt = std::move(*std::any_cast<std::vector<AstStmtNode *>>(&visRes));
+		node->elseStmt = new AstBlockStmtNode{};
+		node->elseStmt->stmts = std::move(*std::any_cast<std::vector<AstStmtNode *>>(&visRes));
 	}
 	return static_cast<AstStmtNode *>(node);
 }

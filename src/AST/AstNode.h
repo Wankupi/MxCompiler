@@ -329,14 +329,14 @@ struct AstWhileStmtNode : public AstStmtNode {
 };
 
 struct AstIfStmtNode : public AstStmtNode {
-	std::vector<std::pair<AstExprNode *, std::vector<AstStmtNode *>>> ifStmts;
-	std::vector<AstStmtNode *> elseStmt;
+	std::vector<std::pair<AstExprNode *, AstBlockStmtNode *>> ifStmts;
+	AstBlockStmtNode *elseStmt;
 	~AstIfStmtNode() override {
 		for (auto &stmt: ifStmts) {
 			delete stmt.first;
-			for (auto &s: stmt.second) delete s;
+			delete stmt.second;
 		}
-		for (auto &stmt: elseStmt) delete stmt;
+		delete elseStmt;
 	}
 	std::string NodeType() override {
 		return "AstIfStmtNode";

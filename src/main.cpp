@@ -17,10 +17,9 @@
 
 AstNode *getAST(std::istream &in);
 
-int test(std::string const &filename) {
+int main() {
 	try {
-		std::ifstream in(filename, std::ios::in);
-		AST ast{getAST(in)};
+		AST ast{getAST(std::cin)};
 
 		GlobalScope globalScope;
 
@@ -32,34 +31,12 @@ int test(std::string const &filename) {
 		functionCollector.init_builtin_functions();
 		functionCollector.visit(ast.root);
 
-		//		for (auto &var: globalScope.vars)
-		//			std::cout << "let " << var.first << " : " << var.second.to_string() << std::endl;
-		//		for (auto &class_: globalScope.types) {
-		//			std::cout << "class " << class_.first << std::endl;
-		//			if (class_.second->scope == nullptr)
-		//				continue;
-		//			for (auto &var: class_.second->scope->vars)
-		//				std::cout << "\tlet " << var.first << " : " << var.second.to_string() << std::endl;
-		//		}
-
 		SemanticChecker semanticChecker(&globalScope);
 		semanticChecker.visit(ast.root);
 
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
-	}
-	return 0;
-}
-
-int main() {
-	for (int i = 19; i <= 19; ++i) {
-		std::string filename = "/home/wkp/codes/MxCompiler/data/sema/basic-package/basic-" + std::to_string(i) + ".mx";
-		std::cout << "Test " << i << " ";
-		if (test(filename) == 0)
-			std::cout << "Success" << std::endl;
-		else
-			std::cout << "Fail" << std::endl;
 	}
 	return 0;
 }

@@ -8,9 +8,10 @@ channels {
 Comment: (BlockComment | LineComment) -> channel(COMMENT);
 
 BlockComment: '/*' .*? '*/';
-LineComment: '//' .*? NewLine;
+LineComment: '//' .*? (NewLine | EOF);
 
-String: '"' ('\\"' | .)*? '"';
+fragment EscapeChar: '\\\\' | '\\n' | '\\t' | '\\"';
+String: '"' (EscapeChar | .)*? '"';
 NewLine: ('\r' | '\n' | '\u2028' | '\u2029') -> channel(WS);
 Whitespace: (' ' | '\t' | '\u000B' | '\u000C' | '\u00A0') -> channel(WS);
 

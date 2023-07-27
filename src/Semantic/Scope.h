@@ -30,17 +30,18 @@ public:
 	}
 	[[nodiscard]] bool assignable(TypeInfo const &rhs) const {
 		if (isConst) return false;
-		if (dimension > 0 && rhs.is_null()) return true;
+		if (rhs.is_null()) return dimension > 0 || !is_basic();
 		return (basicType == rhs.basicType) && dimension == rhs.dimension;
 	}
 	[[nodiscard]] std::string to_string() const;
 	TypeInfo get_member(std::string const &member_name, GlobalScope *scope);
 	[[nodiscard]] bool is_null() const { return !basicType; }
-	[[nodiscard]] bool is_void() const { return !basicType; }
+	[[nodiscard]] bool is_void() const;
 	[[nodiscard]] bool is_int() const;
 	[[nodiscard]] bool is_string() const;
 	[[nodiscard]] bool is_bool() const;
-	bool is(std::string const &name) const;
+	[[nodiscard]] bool is_basic() const;
+	[[nodiscard]] bool is(std::string const &name) const;
 };
 
 struct Type {
@@ -71,6 +72,7 @@ public:
 
 class Scope {
 	friend int main();
+	friend class SemanticChecker;
 
 private:
 	Scope *fatherScope = nullptr;
@@ -107,6 +109,7 @@ public:
 };
 
 class GlobalScope : public Scope {
+	friend class SemanticChecker;
 	friend int main();
 	std::map<std::string, ClassType *> types;
 
@@ -119,4 +122,5 @@ public:
 
 	Type *add_class(std::string const &name);
 	ClassType *query_class(std::string const &name);
+	bool has_class(std::string const &name);
 };

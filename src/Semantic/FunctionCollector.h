@@ -30,6 +30,8 @@ private:
 	}
 
 	void enterFunctionNode(AstFunctionNode *node, Scope *class_scope) {
+		if (globalScope->has_class(node->name))
+			throw semantic_error("function name conflict with class: " + node->name);
 		FuncType f;
 		f.name = node->name;
 		f.returnType = parseType(node->returnType);

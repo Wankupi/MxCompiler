@@ -65,7 +65,7 @@ expression:
 	| expression op = ('++' | '--')										# RightSingleExpr
 	| <assoc = right> op = ('++' | '--') expression						# LeftSingleExpr
 	| <assoc = right> op = ('+' | '-' | '!' | '~') expression			# LeftSingleExpr
-	| 'new' typename													# NewExpr
+	| 'new' typename ('(' ')')?											# NewExpr
 	| lhs = expression op = ('*' | '/' | '%') rhs = expression			# BinaryExpr
 	| lhs = expression op = ('+' | '-') rhs = expression				# BinaryExpr
 	| lhs = expression op = ('<<' | '>>') rhs = expression				# BinaryExpr
