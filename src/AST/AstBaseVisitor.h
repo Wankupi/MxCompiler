@@ -11,7 +11,6 @@ public:
 	virtual void visit(AstNode *node) { node->accept(this); }
 	virtual void visitExprNode(AstExprNode *node){};
 	virtual void visitTypeNode(AstTypeNode *node){};
-	virtual void visitFuncParamNode(AstFuncParamNode *node){};
 	virtual void visitArrayAccessExprNode(AstArrayAccessExprNode *node){};
 	virtual void visitMemberAccessExprNode(AstMemberAccessExprNode *node){};
 	virtual void visitBinaryExprNode(AstBinaryExprNode *node){};

@@ -198,6 +198,7 @@ struct AstVarStmtNode : public AstStmtNode {
 };
 
 struct AstFunctionNode : public AstNode {
+	TypeInfo valueType;
 	AstTypeNode *returnType;
 	std::string name;
 	std::vector<std::pair<AstTypeNode *, std::string>> params;

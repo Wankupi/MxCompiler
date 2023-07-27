@@ -19,12 +19,28 @@ public:
 	bool operator==(TypeInfo const &rhs) const {
 		return basicType == rhs.basicType && dimension == rhs.dimension;
 	}
-	bool assignable(TypeInfo const &rhs) const {
-		if (isConst) return false;
-		return *this == rhs;
+	bool operator==(Type *rhs) const {
+		return basicType == rhs && dimension == 0;
 	}
-	std::string to_string() const;
+	bool operator!=(TypeInfo const &rhs) const {
+		return !(*this == rhs);
+	}
+	bool operator!=(Type *rhs) const {
+		return !(*this == rhs);
+	}
+	[[nodiscard]] bool assignable(TypeInfo const &rhs) const {
+		if (isConst) return false;
+		if (dimension > 0 && rhs.is_null()) return true;
+		return (basicType == rhs.basicType) && dimension == rhs.dimension;
+	}
+	[[nodiscard]] std::string to_string() const;
 	TypeInfo get_member(std::string const &member_name, GlobalScope *scope);
+	[[nodiscard]] bool is_null() const { return !basicType; }
+	[[nodiscard]] bool is_void() const { return !basicType; }
+	[[nodiscard]] bool is_int() const;
+	[[nodiscard]] bool is_string() const;
+	[[nodiscard]] bool is_bool() const;
+	bool is(std::string const &name) const;
 };
 
 struct Type {
@@ -32,7 +48,7 @@ struct Type {
 
 public:
 	~Type() = default;
-	virtual std::string to_string() const = 0;
+	[[nodiscard]] virtual std::string to_string() const = 0;
 	virtual TypeInfo get_member(std::string const &member_name) = 0;
 };
 
@@ -40,7 +56,7 @@ struct ClassType : public Type {
 	Scope *scope = nullptr;
 
 public:
-	std::string to_string() const override { return name; }
+	[[nodiscard]] std::string to_string() const override { return name; }
 	TypeInfo get_member(const std::string &member_name) override;
 };
 
@@ -49,7 +65,7 @@ struct FuncType : public Type {
 	std::vector<TypeInfo> args;
 
 public:
-	std::string to_string() const override;
+	[[nodiscard]] std::string to_string() const override;
 	TypeInfo get_member(const std::string &member_name) override;
 };
 

@@ -1,8 +1,9 @@
 #include "Scope.h"
 
 std::string TypeInfo::to_string() const {
-	std::string ret = basicType->to_string();
+	std::string ret = basicType ? basicType->to_string() : "null";
 	for (int i = 0; i < dimension; ++i) ret += "[]";
+	if (isConst) ret = "const " + ret;
 	return ret;
 }
 
@@ -11,6 +12,22 @@ TypeInfo TypeInfo::get_member(const std::string &member_name, GlobalScope *scope
 		return basicType->get_member(member_name);
 	else
 		return scope->query_function_for_array(member_name);
+}
+
+bool TypeInfo::is_int() const {
+	return basicType && basicType->name == "int" && dimension == 0;
+}
+
+bool TypeInfo::is(const std::string &name) const {
+	return basicType && basicType->name == name && dimension == 0;
+}
+
+bool TypeInfo::is_string() const {
+	return basicType && basicType->name == "string" && dimension == 0;
+}
+
+bool TypeInfo::is_bool() const {
+	return basicType && basicType->name == "bool" && dimension == 0;
 }
 
 TypeInfo ClassType::get_member(const std::string &member_name) {
@@ -37,6 +54,8 @@ TypeInfo FuncType::get_member(const std::string &member_name) {
 void Scope::add_variable(const std::string &name, const TypeInfo &type) {
 	if (vars.contains(name))
 		throw semantic_error("variable redefinition: " + name);
+	if (type.basicType->name == "void")
+		throw semantic_error("variable type could not be void: " + name);
 	vars[name] = type;
 }
 
@@ -46,7 +65,7 @@ TypeInfo Scope::query_variable(const std::string &name) {
 		if (auto it = s->vars.find(name); it != s->vars.end())
 			return it->second;
 		else
-			s = fatherScope;
+			s = s->fatherScope;
 	} while (s);
 	throw semantic_error("variable not found: " + name);
 }

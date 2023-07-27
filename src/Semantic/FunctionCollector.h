@@ -51,6 +51,8 @@ private:
 
 	void visitClassNode(AstClassNode *node) override {
 		node->scope = globalScope->add_sub_scope();
+		globalScope->query_class(node->name)->scope = node->scope;
+		node->scope->add_variable("this", {globalScope->query_class(node->name), 0, false});
 		for (auto &var: node->variables)
 			enterVarStmtNode(var, node->scope);
 		for (auto &constructor: node->constructors)
