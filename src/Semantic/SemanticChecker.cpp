@@ -259,11 +259,20 @@ void SemanticChecker::visitBinaryExprNode(AstBinaryExprNode *node) {
 	auto vl = node->lhs->valueType, vr = node->rhs->valueType;
 	auto const &op = node->op;
 
-
 	if (op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=") {
-		if (!vl.is_basic() || !vr.is_basic()) {
-			if (!vl.is_null() && !vr.is_null())
-				throw semantic_error("binary operation on non-basic type, l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+		if (op == "==" || op == "!=") {
+			if (!vl.is_basic() || !vr.is_basic()) {
+				if (!vl.is_null() && !vr.is_null())
+					throw semantic_error("operator== on non-basic type l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+			}
+			else if (vl != vr)
+				throw semantic_error("operator== on different basic type l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+		}
+		else {
+			if (vl != vr || !vl.is_basic() || !vr.is_basic())
+				throw semantic_error("compare l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+			if (vl.is_bool() || vl.is_void())
+				throw semantic_error("can't compare on l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
 		}
 		node->valueType = {globalScope->query_class("bool"), 0, true};
 	}
