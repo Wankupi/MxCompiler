@@ -4,13 +4,14 @@ options {
 	tokenVocab = MxLexer;
 }
 
-file: (defineFunction | defineClass | defineVariableStmt)* EOF;
+file: (defineFunction | defineClass | defineVariableStmt | ';')* EOF;
 
 defineClass:
 	Class Identifier '{' (
 		defineVariableStmt
 		| defineFunction
 		| constructFunction
+		| ';'
 	)* '}' ';';
 
 defineFunction:
