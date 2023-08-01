@@ -72,6 +72,7 @@ struct AstBinaryExprNode : public AstExprNode {
 
 struct AstAtomExprNode : public AstExprNode {
 	std::string name;
+	std::string uniqueName;
 	~AstAtomExprNode() override = default;
 	std::string NodeType() override {
 		return "AstAtomExprNode";
@@ -186,6 +187,7 @@ struct AstBlockStmtNode : public AstStmtNode {
 struct AstVarStmtNode : public AstStmtNode {
 	AstTypeNode *type;
 	std::vector<std::pair<std::string, AstExprNode *>> vars;
+	std::vector<std::pair<std::string, AstExprNode *>> vars_unique_name;
 	~AstVarStmtNode() override {
 		delete type;
 		for (auto &var: vars) delete var.second;
@@ -202,6 +204,7 @@ struct AstFunctionNode : public AstNode {
 	AstTypeNode *returnType;
 	std::string name;
 	std::vector<std::pair<AstTypeNode *, std::string>> params;
+	std::vector<std::pair<AstTypeNode *, std::string>> params_unique_name;
 	AstStmtNode *body;
 	~AstFunctionNode() override {
 		delete returnType;

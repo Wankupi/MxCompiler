@@ -38,7 +38,7 @@ bool TypeInfo::is_void() const {
 
 TypeInfo ClassType::get_member(const std::string &member_name) {
 	if (!scope) throw semantic_error("class has no member: " + name + "." + member_name);
-	return scope->query_variable(member_name);
+	return scope->query_variable_type(member_name);
 }
 
 std::string FuncType::to_string() const {
@@ -63,13 +63,25 @@ void Scope::add_variable(const std::string &name, const TypeInfo &type) {
 	if (type.basicType->name == "void")
 		throw semantic_error("variable type could not be void: " + name);
 	vars[name] = type;
+	uniqueNames[name] = name + scopeName;
 }
 
-TypeInfo Scope::query_variable(const std::string &name) {
+TypeInfo Scope::query_variable_type(const std::string &name) {
 	auto s = this;
 	do {
 		if (auto it = s->vars.find(name); it != s->vars.end())
 			return it->second;
+		else
+			s = s->fatherScope;
+	} while (s);
+	throw semantic_error("variable not found: " + name);
+}
+
+std::string Scope::query_var_unique_name(const std::string &name) {
+	auto s = this;
+	do {
+		if (auto it = s->vars.find(name); it != s->vars.end())
+			return s->uniqueNames[name];
 		else
 			s = s->fatherScope;
 	} while (s);

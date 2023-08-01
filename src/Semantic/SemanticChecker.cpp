@@ -15,7 +15,7 @@ void SemanticChecker::visitFileNode(AstFileNode *node) {
 		else
 			visit(child);
 	}
-	auto main_func = scope->query_variable("main");
+	auto main_func = scope->query_variable_type("main");
 	auto f = dynamic_cast<FuncType *>(main_func.basicType);
 	if (!f || !f->args.empty())
 		throw semantic_error("main function not found");
@@ -45,6 +45,8 @@ void SemanticChecker::visitFunctionNode(AstFunctionNode *node) {
 		auto type = enterTypeNode(param.first);
 		scope->add_variable(param.second, type);
 	}
+	for (auto &param: node->params)
+		param.second = scope->query_var_unique_name(param.second);
 
 	visitBlockStmtNodeWithoutNewScope(dynamic_cast<AstBlockStmtNode *>(node->body));
 	currentFunction = nullptr;
@@ -92,6 +94,10 @@ void SemanticChecker::visitVarStmtNode(AstVarStmtNode *node) {
 		}
 		scope->add_variable(var.first, type);
 	}
+	node->vars_unique_name = node->vars;
+	for (auto &var: node->vars_unique_name)
+		var.first = scope->query_var_unique_name(var.first);
+
 }
 
 void SemanticChecker::visitIfStmtNode(AstIfStmtNode *node) {
@@ -161,7 +167,8 @@ void SemanticChecker::visitExprStmtNode(AstExprStmtNode *node) {
 }
 
 void SemanticChecker::visitAtomExprNode(AstAtomExprNode *node) {
-	node->valueType = scope->query_variable(node->name);
+	node->valueType = scope->query_variable_type(node->name);
+	node->uniqueName = scope->query_var_unique_name(node->name);
 }
 
 void SemanticChecker::visitLiterExprNode(AstLiterExprNode *node) {

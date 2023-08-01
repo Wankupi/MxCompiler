@@ -12,6 +12,8 @@
 #include "Semantic/Scope.h"
 #include "Semantic/SemanticChecker.h"
 
+#include "IR/Builder.h"
+
 #include <fstream>
 #include <iostream>
 
@@ -40,10 +42,22 @@ int main(int argc, char *argv[]) {
 		SemanticChecker semanticChecker(&globalScope);
 		semanticChecker.visit(ast.root);
 
+		IRBuilder irBuilder;
+		irBuilder.visit(ast.root);
+
+		std::ofstream out("test.ll", std::ios::out);
+		if (out.fail())
+			throw std::runtime_error("Cannot open file test.ll");
+
+		auto ir = irBuilder.getIR();
+		ir->print(out);
+
+		delete ir;
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
+	system("llc --march=riscv32 test.ll");
 	return 0;
 }
 

@@ -40,8 +40,9 @@ void AstMemberAccessExprNode::print() {
 void AstVarStmtNode::print() {
 	type->print();
 	std::cout << " ";
+	auto vars_to_print = vars_unique_name.empty() ? vars : vars_unique_name;
 	bool first = true;
-	for (auto &var: vars) {
+	for (auto &var: vars_to_print) {
 		if (!first)
 			std::cout << ", ";
 		first = false;
@@ -57,13 +58,12 @@ void AstVarStmtNode::print() {
 void AstFunctionNode::print() {
 	returnType->print();
 	std::cout << ' ' << name << "(" << std::flush;
-	bool first = true;
-	for (auto param: params) {
-		if (!first)
-			std::cout << ", ";
+	auto params_to_print = params_unique_name.empty() ? params : params_unique_name;
+	for (auto &param: params_to_print) {
 		param.first->print();
 		std::cout << " " << param.second;
-		first = false;
+		if (param != params_to_print.back())
+			std::cout << ", ";
 	}
 	std::cout << ") ";
 	body->print();
@@ -107,7 +107,10 @@ void AstBinaryExprNode::print() {
 }
 
 void AstAtomExprNode::print() {
-	std::cout << name;
+	if (uniqueName.empty())
+		std::cout << name;
+	else
+		std::cout << uniqueName;
 }
 
 
@@ -225,7 +228,7 @@ void AstIfStmtNode::print() {
 		std::cout << ") ";
 		cur->second->print();
 	}
-	elseStmt->print();
+	if (elseStmt) elseStmt->print();
 }
 
 void AstTernaryExprNode::print() {

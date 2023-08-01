@@ -72,12 +72,15 @@ public:
 
 class Scope {
 private:
+	std::string scopeName;
 	Scope *fatherScope = nullptr;
 	std::vector<Scope *> subScopes;
 
 protected:
 	std::map<std::string, TypeInfo> vars;
 	std::map<std::string, FuncType *> funcs;
+	std::map<std::string, std::string> uniqueNames;
+
 	static constexpr const char *const ArrayFuncPrefix = "__array__";
 
 public:
@@ -93,12 +96,14 @@ public:
 		auto *scope = new Scope;
 		scope->fatherScope = this;
 		subScopes.push_back(scope);
+		scope->scopeName = scopeName + "-" + std::to_string(subScopes.size());
 		return scope;
 	}
 
 	void add_variable(std::string const &name, TypeInfo const &type);
 
-	TypeInfo query_variable(std::string const &name);
+	TypeInfo query_variable_type(std::string const &name);
+	std::string query_var_unique_name(std::string const &name);
 
 	void add_function(FuncType &&func);
 	void add_function_for_array(FuncType &&func);
