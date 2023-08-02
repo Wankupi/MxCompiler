@@ -35,6 +35,9 @@ bool TypeInfo::is_basic() const {
 bool TypeInfo::is_void() const {
 	return basicType && basicType->name == "void" && dimension == 0;
 }
+bool TypeInfo::is_function() const {
+	return dynamic_cast<FuncType *>(basicType) != nullptr;
+}
 
 TypeInfo ClassType::get_member(const std::string &member_name) {
 	if (!scope) throw semantic_error("class has no member: " + name + "." + member_name);

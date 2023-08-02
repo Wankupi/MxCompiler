@@ -15,7 +15,10 @@ void Class::print(std::ostream &out) const {
 }
 
 void Function::print(std::ostream &out) const {
-	out << "define ";
+	if (blocks.empty())
+		out << "declare ";
+	else
+		out << "define ";
 	if (type)
 		out << type->to_string() << " ";
 	out << "@" << name << "(";
@@ -23,10 +26,13 @@ void Function::print(std::ostream &out) const {
 		out << param.first->to_string() << " %" << param.second;
 		if (param != params.back()) out << ", ";
 	}
-	out << ") {\n";
-	for (auto block: blocks)
-		block->print(out);
-	out << "}";
+	out << ")";
+	if (!blocks.empty()) {
+		out << " {\n";
+		for (auto block: blocks)
+			block->print(out);
+		out << "}";
+	}
 }
 
 void Val::print(std::ostream &out) const {
@@ -80,7 +86,7 @@ void StoreStmt::print(std::ostream &out) const {
 }
 
 void AllocaStmt::print(std::ostream &out) const {
-	out << res->get_name() << " = alloca " << res->type->to_string();
+	out << res->get_name() << " = alloca " << type->to_string();
 }
 
 void LiteralBool::print(std::ostream &out) const {
@@ -133,5 +139,57 @@ void LoadStmt::print(std::ostream &out) const {
 
 void RetStmt::print(std::ostream &out) const {
 	out << "ret ";
-	value->print(out);
+	if (value)
+		value->print(out);
+	else
+		out << "void";
+}
+
+void GetElementPtrStmt::print(std::ostream &out) const {
+	out << res->get_name() << " = getelementptr " << typeName << ", ptr " << pointer->get_name() << ", ";
+	for (auto &idx: indices) {
+		idx->print(out);
+		if (&idx != &indices.back())
+			out << ", ";
+	}
+}
+
+void CallStmt::print(std::ostream &out) const {
+	if (res)
+		out << res->get_name() << " = ";
+	out << "call " << func->type->to_string() << " @" << func->name << "(";
+	for (auto &arg: args) {
+		arg->print(out);
+		if (&arg != &args.back())
+			out << ", ";
+	}
+	out << ")";
+}
+
+void DirectBrStmt::print(std::ostream &out) const {
+	out << "br label %" << block->label;
+}
+
+void CondBrStmt::print(std::ostream &out) const {
+	out << "br ";
+	cond->print(out);
+	out << ", label %" << trueBlock->label << ", label %" << falseBlock->label;
+}
+
+void IcmpStmt::print(std::ostream &out) const {
+	out << res->get_name() << " = icmp " << cmd << " i32 ";
+	out << lhs->get_name();
+	out << ", ";
+	out << rhs->get_name();
+}
+
+void PhiStmt::print(std::ostream &out) const {
+	out << res->get_name() << " = phi " << res->type->to_string() << " ";
+	for (auto &val: branches) {
+		out << "[ ";
+		out << val.first->get_name();
+		out << ", %" << val.second->label << " ]";
+		if (&val != &branches.back())
+			out << ", ";
+	}
 }

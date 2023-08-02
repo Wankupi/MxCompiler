@@ -42,6 +42,7 @@ public:
 	[[nodiscard]] bool is_bool() const;
 	[[nodiscard]] bool is_basic() const;
 	[[nodiscard]] bool is(std::string const &name) const;
+	[[nodiscard]] bool is_function() const;
 };
 
 struct Type {

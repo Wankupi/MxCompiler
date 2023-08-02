@@ -41,6 +41,10 @@ struct LocalVar : public Var {
 	[[nodiscard]] std::string get_name() const override;
 };
 
+struct PtrVar : public LocalVar {
+	Type *objType = nullptr;
+};
+
 struct Literal : public Val {};
 
 struct LiteralBool : public Literal {
@@ -86,6 +90,7 @@ struct Function : public IRNode {
 };
 
 struct AllocaStmt : public Stmt {
+	Type *type = nullptr;
 	Var *res = nullptr;
 	void print(std::ostream &out) const override;
 };
@@ -110,8 +115,51 @@ struct ArithmeticStmt : public Stmt {
 	void print(std::ostream &out) const override;
 };
 
+struct IcmpStmt : public Stmt {
+	Var *res = nullptr;
+	Val *lhs = nullptr;
+	Val *rhs = nullptr;
+	std::string cmd;
+	void print(std::ostream &out) const override;
+};
+
 struct RetStmt : public Stmt {
 	Val *value = nullptr;
+	void print(std::ostream &out) const override;
+};
+
+struct GetElementPtrStmt : public Stmt {
+	Var *res = nullptr;
+	Var *pointer = nullptr;
+	std::string typeName;
+	std::vector<Val *> indices;
+	void print(std::ostream &out) const override;
+};
+
+struct CallStmt : public Stmt {
+	Var *res = nullptr;
+	Function *func;
+	std::vector<Val *> args;
+	void print(std::ostream &out) const override;
+};
+
+struct BrStmt : public Stmt {};
+
+struct DirectBrStmt : public BrStmt {
+	Block *block = nullptr;
+	void print(std::ostream &out) const override;
+};
+
+struct CondBrStmt : public BrStmt {
+	Val *cond = nullptr;
+	Block *trueBlock = nullptr;
+	Block *falseBlock = nullptr;
+	void print(std::ostream &out) const override;
+};
+
+struct PhiStmt : public Stmt {
+	Var *res = nullptr;
+	std::vector<std::pair<Val *, Block *>> branches;
 	void print(std::ostream &out) const override;
 };
 
