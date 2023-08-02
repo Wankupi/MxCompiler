@@ -331,7 +331,7 @@ void IRBuilder::visitNewExprNode(AstNewExprNode *node) {
 
 void IRBuilder::visitReturnStmtNode(AstReturnStmtNode *node) {
 	auto ret = new RetStmt{};
-    if (node->expr) {
+	if (node->expr) {
 		visit(node->expr);
 		ret->value = remove_variable_pointer(exprResult[node->expr]);
 	}
@@ -476,11 +476,11 @@ void IRBuilder::visitIfStmtNode(AstIfStmtNode *node) {
 
 void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	++andOrCounter;
-	auto calc_left = currentFunction->blocks.back();
 	auto calc_right = new Block{"short_rhs_" + std::to_string(andOrCounter)};
 	auto result = new Block{"short_result_" + std::to_string(andOrCounter)};
 
 	visit(node->lhs);
+	auto calc_left = currentFunction->blocks.back();
 	auto br = new CondBrStmt{};
 	br->cond = remove_variable_pointer(exprResult[node->lhs]);
 	if (node->op == "&&") {
@@ -495,16 +495,19 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 
 	add_block(calc_right);
 	visit(node->rhs);
+	// load must done in this block
+	auto rhs_res = remove_variable_pointer(exprResult[node->rhs]);
+
 	auto br2result = new DirectBrStmt{};
 	br2result->block = result;
 	add_stmt(br2result);
 
 	add_block(result);
 	auto phi = new PhiStmt{};
-	exprResult[node] = phi->res = register_annoy_var(&boolType);
 	if (node->op == "&&")
-		phi->branches = {{&literal_false, calc_left}, {&literal_true, calc_right}};
+		phi->branches = {{&literal_false, calc_left}, {rhs_res, calc_right}};
 	else
-		phi->branches = {{&literal_true, calc_left}, {&literal_false, calc_right}};
+		phi->branches = {{&literal_true, calc_left}, {rhs_res, calc_right}};
+	exprResult[node] = phi->res = register_annoy_var(&boolType);
 	add_stmt(phi);
 }
