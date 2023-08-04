@@ -20,10 +20,18 @@
 AstNode *getAST(std::istream &in);
 
 int main(int argc, char *argv[]) {
+	std::set<std::string> config;
+	std::vector<std::string> files;
+	for (auto i = 1; i < argc; ++i) {
+		if (argv[i][0] == '-')
+			config.insert(argv[i]);
+		else
+			files.emplace_back(argv[i]);
+	}
 	try {
 		AST ast(nullptr);
-		if (argc > 1) {
-			std::ifstream in(argv[1]);
+		if (!files.empty()) {
+			std::ifstream in(files[0]);
 			ast.root = getAST(in);
 		}
 		else
@@ -42,6 +50,11 @@ int main(int argc, char *argv[]) {
 		SemanticChecker semanticChecker(&globalScope);
 		semanticChecker.visit(ast.root);
 
+		if (config.contains("-fsyntax-only"))
+			return 0;
+
+		//		ast.root->print();
+
 		IRBuilder irBuilder;
 		irBuilder.visit(ast.root);
 
@@ -51,13 +64,15 @@ int main(int argc, char *argv[]) {
 
 		auto ir = irBuilder.getIR();
 		ir->print(out);
-
+		//		ir->print(std::cout);
 		delete ir;
+
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
 	system("llc --march=riscv32 test.ll");
+	//	system("./ravel --oj-mode --input-file=test.in --output-file=test.out test.s");
 	return 0;
 }
 

@@ -33,6 +33,10 @@ struct Var : public Val {
 	std::string name;
 };
 
+struct StringLiteralVar : public Var {
+	[[nodiscard]] std::string get_name() const override;
+};
+
 struct GlobalVar : public Var {
 	[[nodiscard]] std::string get_name() const override;
 };
@@ -124,6 +128,8 @@ struct IcmpStmt : public Stmt {
 };
 
 struct RetStmt : public Stmt {
+	RetStmt() = default;
+	explicit RetStmt(Val *value) : value(value) {}
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
 };
@@ -163,12 +169,31 @@ struct PhiStmt : public Stmt {
 	void print(std::ostream &out) const override;
 };
 
+struct UnreachableStmt : public Stmt {
+	void print(std::ostream &out) const override;
+};
+
+struct GlobalStmt : public Stmt {
+	GlobalVar *var = nullptr;
+	Val *value = nullptr;
+	void print(std::ostream &out) const override;
+};
+
+struct GlobalStringStmt : public Stmt {
+	StringLiteralVar *var = nullptr;
+	std::string value;
+	void print(std::ostream &out) const override;
+};
+
 struct Module : public IRNode {
 	std::vector<Class *> classes;
-	std::vector<GlobalVar *> globalVars;// stored for memory control
 	std::vector<Function *> functions;
-
+	std::vector<GlobalStmt *> variables;
+	std::vector<GlobalStringStmt *> stringLiterals;
 	void print(std::ostream &out) const override;
+
+	std::vector<Var *> globalVars;// stored for memory control
+
 	//	~Module() override {
 	//		for (auto &c: classes) delete c;
 	//		for (auto &g: globalVars) delete g;

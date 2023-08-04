@@ -97,7 +97,6 @@ void SemanticChecker::visitVarStmtNode(AstVarStmtNode *node) {
 	node->vars_unique_name = node->vars;
 	for (auto &var: node->vars_unique_name)
 		var.first = scope->query_var_unique_name(var.first);
-
 }
 
 void SemanticChecker::visitIfStmtNode(AstIfStmtNode *node) {
@@ -304,9 +303,12 @@ void SemanticChecker::visitTernaryExprNode(AstTernaryExprNode *node) {
 		throw semantic_error("ternary condition should be bool, but get <" + node->cond->valueType.to_string() + ">");
 	visit(node->trueExpr);
 	visit(node->falseExpr);
-	if (node->trueExpr->valueType != node->falseExpr->valueType)
+	if (node->trueExpr->valueType == node->falseExpr->valueType || node->trueExpr->valueType.convertible(node->falseExpr->valueType))
+		node->valueType = node->trueExpr->valueType;
+	else if (node->falseExpr->valueType.convertible(node->trueExpr->valueType))
+		node->valueType = node->falseExpr->valueType;
+	else
 		throw semantic_error("ternary expression type mismatch");
-	node->valueType = node->trueExpr->valueType;
 	node->valueType.isConst = true;
 }
 

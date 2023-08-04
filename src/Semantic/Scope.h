@@ -30,6 +30,9 @@ public:
 	}
 	[[nodiscard]] bool assignable(TypeInfo const &rhs) const {
 		if (isConst) return false;
+		return convertible(rhs);
+	}
+	[[nodiscard]] bool convertible(TypeInfo const &rhs) const {
 		if (rhs.is_null()) return dimension > 0 || !is_basic();
 		return (basicType == rhs.basicType) && dimension == rhs.dimension;
 	}
@@ -72,8 +75,10 @@ public:
 };
 
 class Scope {
-private:
+public:
 	std::string scopeName;
+
+private:
 	Scope *fatherScope = nullptr;
 	std::vector<Scope *> subScopes;
 

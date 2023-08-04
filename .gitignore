@@ -8,4 +8,4 @@ antlr4/.antlr/
 out/
 MxAntlr/*
 !MxAntlr/CMakeLists.txt
-data/
+data

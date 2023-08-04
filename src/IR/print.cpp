@@ -57,10 +57,16 @@ target triple = "riscv32-unknown-unknown-elf"
 		c->print(out);
 		out << "\n\n";
 	}
-	for (auto &g: globalVars) {
-		g->print(out);
-		out << "\n\n";
+	for (auto str: stringLiterals) {
+		str->print(out);
+		out << "\n";
 	}
+	out << '\n';
+	for (auto &g: variables) {
+		g->print(out);
+		out << "\n";
+	}
+	out << "\n";
 	for (auto &f: functions) {
 		f->print(out);
 		out << "\n\n";
@@ -108,8 +114,9 @@ std::string LiteralInt::get_name() const {
 //}
 
 void LiteralNull::print(std::ostream &out) const {
-	out << "null";
+	out << "ptr null";
 }
+
 std::string LiteralNull::get_name() const {
 	return "null";
 }
@@ -192,4 +199,33 @@ void PhiStmt::print(std::ostream &out) const {
 		if (&val != &branches.back())
 			out << ", ";
 	}
+}
+
+void UnreachableStmt::print(std::ostream &out) const {
+	out << "unreachable";
+}
+
+void GlobalStmt::print(std::ostream &out) const {
+	out << var->get_name() << " = global ";
+	value->print(out);
+}
+
+void GlobalStringStmt::print(std::ostream &out) const {
+	out << var->get_name() << " = private unnamed_addr constant [" << value.size() << " x i8] c\"";
+	for (auto c: value) {
+		if (c == '\n')
+			out << "\\0A";
+
+		else if (c == '\\')
+			out << "\\\\";
+		else if (c == '"')
+			out << "\\22";
+		else
+			out << c;
+	}
+	out << '"';
+}
+
+std::string StringLiteralVar::get_name() const {
+	return "@" + name;
 }
