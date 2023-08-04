@@ -41,7 +41,7 @@ void IRBuilder::registerClass(AstClassNode *node) {
 	name2class[node->name] = cls;
 	currentClass = cls;
 	for (auto constructor: node->constructors)
-		registerConstructFunc(constructor);
+		registerFunction(constructor);
 	for (auto func: node->functions)
 		registerFunction(func);
 	currentClass = nullptr;
@@ -61,15 +61,6 @@ void IRBuilder::registerFunction(AstFunctionNode *node) {
 		func->params.emplace_back(toIRType(p.first), p.second);
 	module->functions.push_back(func);
 	name2function[func->name] = func;
-}
-
-void IRBuilder::registerConstructFunc(AstConstructFuncNode *node) {
-	auto func = new Function{};
-	func->name = currentClass->type.name + "." + node->name;
-	func->type = &voidType;
-	func->params.emplace_back(&ptrType, "this");
-	for (auto &p: node->params)
-		func->params.emplace_back(toIRType(p.first), p.second);
 }
 
 void IRBuilder::visitClassNode(AstClassNode *node) {
@@ -116,24 +107,6 @@ void IRBuilder::visitFunctionNode(AstFunctionNode *node) {
 	currentFunction = nullptr;
 	add_terminals(func);
 }
-
-void IRBuilder::visitConstructFuncNode(AstConstructFuncNode *node) {
-	auto func = name2function[currentClass->type.name + "." + node->name];
-	for (auto &p: func->params) {
-		auto var = new LocalVar{};
-		var->type = p.first;
-		var->name = p.second;
-		name2var[p.second] = var;
-	}
-	func->blocks.push_back(new Block{"entry"});
-	currentFunction = func;
-	annoyCounter = 0;
-	visit(node->body);
-	currentFunction = nullptr;
-	add_terminals(func);
-	module->functions.push_back(func);
-}
-
 
 IR::PrimitiveType *IRBuilder::toIRType(AstTypeNode *node) {
 	if (node->dimension) return &ptrType;

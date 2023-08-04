@@ -58,7 +58,7 @@ struct AstMemberAccessExprNode : public AstExprNode {
 
 struct AstBinaryExprNode : public AstExprNode {
 	std::string op;
-	AstExprNode *lhs, *rhs;
+	AstExprNode *lhs = nullptr, *rhs = nullptr;
 	~AstBinaryExprNode() override {
 		delete lhs;
 		delete rhs;
@@ -164,7 +164,6 @@ struct AstTernaryExprNode : public AstExprNode {
 };
 
 struct AstStmtNode : public AstNode {
-	using AstNode::AstNode;
 	~AstStmtNode() override = default;
 	std::string NodeType() override {
 		return "AstStmtNode";
@@ -185,7 +184,7 @@ struct AstBlockStmtNode : public AstStmtNode {
 };
 
 struct AstVarStmtNode : public AstStmtNode {
-	AstTypeNode *type;
+	AstTypeNode *type = nullptr;
 	std::vector<std::pair<std::string, AstExprNode *>> vars;
 	std::vector<std::pair<std::string, AstExprNode *>> vars_unique_name;
 	~AstVarStmtNode() override {
@@ -201,11 +200,11 @@ struct AstVarStmtNode : public AstStmtNode {
 
 struct AstFunctionNode : public AstNode {
 	TypeInfo valueType;
-	AstTypeNode *returnType;
+	AstTypeNode *returnType = nullptr;
 	std::string name;
 	std::vector<std::pair<AstTypeNode *, std::string>> params;
 	std::vector<std::pair<AstTypeNode *, std::string>> params_unique_name;
-	AstStmtNode *body;
+	AstStmtNode *body = nullptr;
 	~AstFunctionNode() override {
 		delete returnType;
 		for (auto &param: params) delete param.first;
@@ -218,19 +217,12 @@ struct AstFunctionNode : public AstNode {
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitFunctionNode(this); }
 };
 
-struct AstConstructFuncNode : public AstNode {
-	std::string name;
-	std::vector<std::pair<AstTypeNode *, std::string>> params;
-	AstStmtNode *body;
-	~AstConstructFuncNode() override {
-		for (auto &param: params) delete param.first;
-		delete body;
-	}
+struct AstConstructFuncNode : public AstFunctionNode {
+	~AstConstructFuncNode() override = default;
 	std::string NodeType() override {
 		return "AstConstructFuncNode";
 	}
 	void print() override;
-	void accept(AstBaseVisitor *visitor) override { return visitor->visitConstructFuncNode(this); }
 };
 
 struct AstClassNode : public AstNode {

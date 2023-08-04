@@ -30,7 +30,6 @@ private:
 	void visitBlockStmtNodeWithoutNewScope(AstBlockStmtNode *node);
 	void visitVarStmtNode(AstVarStmtNode *node) override;
 	void visitFunctionNode(AstFunctionNode *node) override;
-	void enterConstructFuncNode(AstConstructFuncNode *node, AstClassNode *classNode);
 	void enterClassNode(AstClassNode *node);
 	void visitExprStmtNode(AstExprStmtNode *node) override;
 	void visitReturnStmtNode(AstReturnStmtNode *node) override;

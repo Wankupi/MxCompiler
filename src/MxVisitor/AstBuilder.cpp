@@ -306,6 +306,7 @@ std::any AstBuilder::visitWhileStmt(MxParser::WhileStmtContext *ctx) {
 
 std::any AstBuilder::visitConstructFunction(MxParser::ConstructFunctionContext *ctx) {
 	auto node = new AstConstructFuncNode{};
+	node->returnType = nullptr;
 	node->name = ctx->Identifier()->getText();
 	if (auto list = ctx->functionParameterList(); list) {
 		auto params = visit(list);

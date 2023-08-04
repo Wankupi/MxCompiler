@@ -35,10 +35,8 @@ private:
 	void visitFileNode(AstFileNode *node) override;
 	void registerClass(AstClassNode *node);
 	void registerFunction(AstFunctionNode *node);
-	void registerConstructFunc(AstConstructFuncNode *node);
 	void visitClassNode(AstClassNode *node) override;
 	void visitFunctionNode(AstFunctionNode *node) override;
-	void visitConstructFuncNode(AstConstructFuncNode *node) override;
 
 	void visitVarStmtNode(AstVarStmtNode *node) override;
 	void visitBlockStmtNode(AstBlockStmtNode *node) override;

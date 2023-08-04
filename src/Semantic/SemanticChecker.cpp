@@ -29,7 +29,7 @@ void SemanticChecker::enterClassNode(AstClassNode *node) {
 	scope = node->scope;
 	for (auto &ctor: node->constructors) {
 		ctor->scope = scope;
-		enterConstructFuncNode(ctor, node);
+		visit(ctor);
 	}
 	for (auto &func: node->functions)
 		visit(func);
@@ -39,7 +39,7 @@ void SemanticChecker::enterClassNode(AstClassNode *node) {
 void SemanticChecker::visitFunctionNode(AstFunctionNode *node) {
 	scope = node->scope = scope->add_sub_scope();
 	currentFunction = node;
-	node->valueType = enterTypeNode(node->returnType);
+	node->valueType = enterTypeNode(node->returnType);// for constructor, type is "void"
 
 	for (auto &param: node->params) {
 		auto type = enterTypeNode(param.first);
@@ -52,18 +52,9 @@ void SemanticChecker::visitFunctionNode(AstFunctionNode *node) {
 	currentFunction = nullptr;
 }
 
-void SemanticChecker::enterConstructFuncNode(AstConstructFuncNode *node, AstClassNode *classNode) {
-	if (node->name != classNode->name)
-		throw semantic_error("construct function should have the same name as class");
-	scope = node->scope = classNode->scope->add_sub_scope();
-	for (auto &param: node->params) {
-		auto type = enterTypeNode(param.first);
-		scope->add_variable(param.second, type);
-	}
-	visitBlockStmtNodeWithoutNewScope(dynamic_cast<AstBlockStmtNode *>(node->body));
-}
-
 TypeInfo SemanticChecker::enterTypeNode(AstTypeNode *node) {
+	if (!node)
+		return TypeInfo{globalScope->query_class("void"), 0, false};
 	for (auto expr: node->arraySize) {
 		visit(expr);
 		if (!expr->valueType.is_int())
@@ -149,8 +140,6 @@ void SemanticChecker::visitContinueStmtNode(AstContinueStmtNode *node) {
 void SemanticChecker::visitReturnStmtNode(AstReturnStmtNode *node) {
 	if (node->expr) {
 		visit(node->expr);
-		if (!currentFunction)
-			throw semantic_error("construct function should not have return value");
 		if (!currentFunction->valueType.assignable(node->expr->valueType))
 			throw semantic_error("return type mismatch, need " + currentFunction->valueType.to_string() + ", but give " + node->expr->valueType.to_string());
 	}

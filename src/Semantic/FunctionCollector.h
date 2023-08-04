@@ -29,22 +29,12 @@ private:
 			class_scope->add_variable(var.first, type);
 	}
 
-	void enterFunctionNode(AstFunctionNode *node, Scope *class_scope) {
-		if (globalScope->has_class(node->name))
+	void enterFunctionNode(AstFunctionNode *node, Scope *class_scope, bool is_constructor = false) {
+		if (!is_constructor && globalScope->has_class(node->name))
 			throw semantic_error("function name conflict with class: " + node->name);
 		FuncType f;
 		f.name = node->name;
 		f.returnType = parseType(node->returnType);
-		f.args.reserve(node->params.size());
-		for (auto &param: node->params)
-			f.args.push_back(parseType(param.first));
-		class_scope->add_function(std::move(f));
-	}
-
-	void enterConstructFuncNode(AstConstructFuncNode *node, Scope *class_scope) {
-		FuncType f;
-		f.name = node->name;
-		f.returnType = {nullptr, 0, false};
 		f.args.reserve(node->params.size());
 		for (auto &param: node->params)
 			f.args.push_back(parseType(param.first));
@@ -60,8 +50,11 @@ private:
 			enterVarStmtNode(var, node->scope);
 		}
 		node->scope->scopeName = "-" + node->name;
-		for (auto &constructor: node->constructors)
-			enterConstructFuncNode(constructor, node->scope);
+		for (auto &constructor: node->constructors) {
+			if (constructor->name != node->name)
+				throw semantic_error("construct function should have the same name as class");
+			enterFunctionNode(constructor, node->scope, true);
+		}
 		for (auto &function: node->functions)
 			enterFunctionNode(function, node->scope);
 	}
@@ -69,8 +62,8 @@ private:
 private:
 	TypeInfo parseType(AstTypeNode *node) {
 		TypeInfo ret;
-		ret.basicType = globalScope->query_class(node->name);
-		ret.dimension = node->dimension;
+		ret.basicType = globalScope->query_class(node ? node->name : "void");
+		ret.dimension = node ? node->dimension : 0;
 		ret.isConst = false;
 		return ret;
 	}

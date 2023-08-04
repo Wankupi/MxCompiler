@@ -25,7 +25,6 @@ public:
 	virtual void visitBlockStmtNode(AstBlockStmtNode *node){};
 	virtual void visitVarStmtNode(AstVarStmtNode *node){};
 	virtual void visitFunctionNode(AstFunctionNode *node){};
-	virtual void visitConstructFuncNode(AstConstructFuncNode *node){};
 	virtual void visitClassNode(AstClassNode *node){};
 	virtual void visitExprStmtNode(AstExprStmtNode *node){};
 	virtual void visitFlowStmtNode(AstFlowStmtNode *node){};
