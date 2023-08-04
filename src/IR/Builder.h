@@ -81,4 +81,6 @@ private:
 	void push_loop(IR::Block *step, IR::Block *after);
 	void pop_loop();
 	IR::StringLiteralVar *register_literal_str(const std::string &str);
+
+	void init_function_params(IR::Function *func);
 };

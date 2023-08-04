@@ -56,7 +56,6 @@ void IRBuilder::registerFunction(AstFunctionNode *node) {
 	else
 		func->name = node->name;
 	func->type = toIRType(node->returnType);
-
 	for (auto &p: node->params)
 		func->params.emplace_back(toIRType(p.first), p.second);
 	module->functions.push_back(func);
@@ -71,6 +70,34 @@ void IRBuilder::visitClassNode(AstClassNode *node) {
 	for (auto func: node->functions)
 		visit(func);
 	currentClass = nullptr;
+}
+
+void IRBuilder::init_function_params(Function *func) {
+	constexpr char const *const SUFFIX = ".param";
+	for (auto &p: func->params) {
+		auto var_val = new LocalVar{};
+		var_val->type = p.first;
+		var_val->name = p.second + SUFFIX;
+		name2var[var_val->name] = var_val;
+
+		auto var = new PtrVar{};
+		var->type = &ptrType;
+		var->objType = p.first;
+		var->name = p.second;
+		name2var[var->name] = var;
+
+		auto alloc = new AllocaStmt{};
+		alloc->res = var;
+		alloc->type = p.first;
+		add_stmt(alloc);
+
+		auto st = new StoreStmt{};
+		st->value = var_val;
+		st->pointer = var;
+		add_stmt(st);
+
+		p.second += SUFFIX;
+	}
 }
 
 void add_terminals(Function *func) {
@@ -94,15 +121,10 @@ void add_terminals(Function *func) {
 void IRBuilder::visitFunctionNode(AstFunctionNode *node) {
 	std::string name = (currentClass ? currentClass->type.name + "." : "") + node->name;
 	auto func = name2function[name];
-	for (auto &p: func->params) {
-		auto var = new LocalVar{};
-		var->type = p.first;
-		var->name = p.second;
-		name2var[p.second] = var;
-	}
 	func->blocks.push_back(new Block{"entry"});
 	currentFunction = func;
 	annoyCounter = 0;
+	init_function_params(func);
 	visit(node->body);
 	currentFunction = nullptr;
 	add_terminals(func);
