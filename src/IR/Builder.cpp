@@ -14,6 +14,16 @@ static LiteralInt literal_zero(0), literal_one(1), literal_minus_one(-1);
 static LiteralBool literal_true(true), literal_false(false);
 static LiteralNull literal_null;
 
+Val *type_to_dafault_value(IR::Type *type) {
+	if (type == &boolType)
+		return &literal_false;
+	else if (type == &intType)
+		return &literal_zero;
+	else
+		return &literal_null;
+}
+
+
 void IRBuilder::visitFileNode(AstFileNode *node) {
 	if (module)
 		throw std::runtime_error("IRBuilder: module already exists");
@@ -24,9 +34,15 @@ void IRBuilder::visitFileNode(AstFileNode *node) {
 			registerFunction(func);
 		else if (auto cls = dynamic_cast<AstClassNode *>(c))
 			registerClass(cls);
+		else if (auto var = dynamic_cast<AstVarStmtNode *>(c))
+			registerGlobalVar(var);
 	}
-	for (auto c: node->children)
+	for (auto c: node->children) {
+		if (dynamic_cast<AstVarStmtNode *>(c))
+			continue;
 		visit(c);
+	}
+	create_init_global_var_function();
 }
 
 void IRBuilder::registerClass(AstClassNode *node) {
@@ -60,6 +76,30 @@ void IRBuilder::registerFunction(AstFunctionNode *node) {
 		func->params.emplace_back(toIRType(p.first), p.second);
 	module->functions.push_back(func);
 	name2function[func->name] = func;
+}
+
+void IRBuilder::registerGlobalVar(AstVarStmtNode *node) {
+	auto type = toIRType(node->type);
+	for (auto &var: node->vars_unique_name) {
+		auto gv = new GlobalVar{};
+		gv->name = var.first;
+		gv->type = type;
+		add_global_var(gv);
+
+		auto globalStmt = new GlobalStmt{};
+		globalStmt->var = gv;
+		globalStmt->value = type_to_dafault_value(type);
+		module->variables.push_back(globalStmt);
+
+		if (var.second) {
+			if (auto constant = dynamic_cast<AstLiterExprNode *>(var.second)) {
+				visit(constant);
+				globalStmt->value = exprResult[constant];
+			}
+			else
+				globalInitList.emplace_back(globalStmt, var.second);
+		}
+	}
 }
 
 void IRBuilder::visitClassNode(AstClassNode *node) {
@@ -123,7 +163,7 @@ void IRBuilder::visitFunctionNode(AstFunctionNode *node) {
 	auto func = name2function[name];
 	func->blocks.push_back(new Block{"entry"});
 	currentFunction = func;
-	annoyCounter = 0;
+	annoyCounter.clear();
 	init_function_params(func);
 	visit(node->body);
 	currentFunction = nullptr;
@@ -153,55 +193,31 @@ IR::PrimitiveType *IRBuilder::toIRType(TypeInfo typeInfo) {
 		return &ptrType;
 }
 
-Val *type_to_dafault_value(IR::Type *type) {
-	if (type == &boolType)
-		return &literal_false;
-	else if (type == &intType)
-		return &literal_zero;
-	else
-		return &literal_null;
-}
 
 void IRBuilder::visitVarStmtNode(AstVarStmtNode *node) {
 	auto type = toIRType(node->type);
-	//	auto type = &ptrType;
-	if (!currentFunction) {// global
-		for (auto &var: node->vars_unique_name) {
-			auto gv = new GlobalVar{};
-			gv->name = var.first;
-			gv->type = type;
-			add_global_var(gv);
+	if (!currentFunction)// global
+		return;
 
-			auto globalStmt = new GlobalStmt{};
-			globalStmt->var = gv;
-			globalStmt->value = type_to_dafault_value(type);
-			module->variables.push_back(globalStmt);
+	// local
+	for (auto &var: node->vars_unique_name) {
+		if (var.second)
+			visit(var.second);
+		auto def_var = new PtrVar{};
+		def_var->name = var.first;
+		def_var->type = &ptrType;
+		def_var->objType = type;
+		add_local_var(def_var);
 
-			if (var.second) {
-				std::cerr << "TODO: global init" << std::endl;
-			}
-		}
-	}
-	else {// local
-		for (auto &var: node->vars_unique_name) {
-			if (var.second)
-				visit(var.second);
-			auto def_var = new PtrVar{};
-			def_var->name = var.first;
-			def_var->type = &ptrType;
-			def_var->objType = type;
-			add_local_var(def_var);
-
-			auto alloc = new AllocaStmt{};
-			alloc->res = def_var;
-			alloc->type = type;
-			add_stmt(alloc);
-			if (var.second) {
-				auto st = new StoreStmt{};
-				st->pointer = def_var;
-				st->value = remove_variable_pointer(exprResult[var.second]);
-				add_stmt(st);
-			}
+		auto alloc = new AllocaStmt{};
+		alloc->res = def_var;
+		alloc->type = type;
+		add_stmt(alloc);
+		if (var.second) {
+			auto st = new StoreStmt{};
+			st->pointer = def_var;
+			st->value = remove_variable_pointer(exprResult[var.second]);
+			add_stmt(st);
 		}
 	}
 }
@@ -245,7 +261,7 @@ void IRBuilder::visitAtomExprNode(AstAtomExprNode *node) {
 		gep->indices.push_back(&literal_zero);
 		gep->indices.push_back(new LiteralInt(idx));
 		gep->typeName = "%class." + currentClass->type.name;
-		gep->res = register_annoy_ptr_var(currentClass->type.fields[idx]);
+		gep->res = register_annoy_ptr_var(currentClass->type.fields[idx], "$" + currentClass->type.name + "_" + name_to_find + ".");
 		add_stmt(gep);
 		exprResult[node] = gep->res;
 	}
@@ -324,7 +340,7 @@ void IRBuilder::visitBinaryExprNode(AstBinaryExprNode *node) {
 		arh->lhs = remove_variable_pointer(exprResult[node->lhs]);
 		arh->rhs = remove_variable_pointer(exprResult[node->rhs]);
 		arh->cmd = arth[node->op];
-		exprResult[node] = arh->res = register_annoy_var(&intType);
+		exprResult[node] = arh->res = register_annoy_var(&intType, ".arith.");
 		add_stmt(arh);
 	}
 	else if (cmp.contains(node->op)) {
@@ -332,7 +348,7 @@ void IRBuilder::visitBinaryExprNode(AstBinaryExprNode *node) {
 		icmp->lhs = remove_variable_pointer(exprResult[node->lhs]);
 		icmp->rhs = remove_variable_pointer(exprResult[node->rhs]);
 		icmp->cmd = cmp[node->op];
-		exprResult[node] = icmp->res = register_annoy_var(&boolType);
+		exprResult[node] = icmp->res = register_annoy_var(&boolType, ".cmp.");
 		add_stmt(icmp);
 	}
 	else
@@ -345,7 +361,7 @@ IR::Val *IRBuilder::remove_variable_pointer(IR::Val *val) {
 	auto glo = dynamic_cast<GlobalVar *>(val);
 	if (!(loc || glo)) return val;
 	auto load = new LoadStmt{};
-	load->res = register_annoy_var(loc ? loc->objType : glo->type);
+	load->res = register_annoy_var(loc ? loc->objType : glo->type, ".load.");
 	load->pointer = loc ? static_cast<Var *>(loc) : static_cast<Var *>(glo);
 	add_stmt(load);
 	return load->res;
@@ -358,22 +374,22 @@ void IRBuilder::visitMemberAccessExprNode(AstMemberAccessExprNode *node) {
 	}
 	else {
 		auto obj = remove_variable_pointer(exprResult[node->object]);
-		auto getEP = new GetElementPtrStmt{};
-		getEP->pointer = dynamic_cast<Var *>(obj);
-		if (!getEP->pointer)
+		auto gep = new GetElementPtrStmt{};
+		gep->pointer = dynamic_cast<Var *>(obj);
+		if (!gep->pointer)
 			throw std::runtime_error("IRBuilder: member access on non-variable");
 
 		auto cls = name2class[node->object->valueType.to_string()];
 		int index = static_cast<int>(cls->name2index[node->member]);
 
-		getEP->res = register_annoy_ptr_var(cls->type.fields[index]);
-		getEP->typeName = "%class." + cls->type.name;
+		gep->res = register_annoy_ptr_var(cls->type.fields[index], ".gep.");
+		gep->typeName = "%class." + cls->type.name;
 
-		getEP->indices.push_back(&literal_zero);
-		getEP->indices.push_back(new LiteralInt{index});
+		gep->indices.push_back(&literal_zero);
+		gep->indices.push_back(new LiteralInt{index});
 
-		add_stmt(getEP);
-		exprResult[node] = getEP->res;
+		add_stmt(gep);
+		exprResult[node] = gep->res;
 	}
 }
 
@@ -382,19 +398,19 @@ void Class::add_filed(PrimitiveType *mem_type, const std::string &mem_name) {
 	name2index[mem_name] = type.fields.size() - 1;
 }
 
-IR::LocalVar *IRBuilder::register_annoy_var(IR::Type *type) {
+IR::LocalVar *IRBuilder::register_annoy_var(IR::Type *type, std::string const &prefix) {
 	auto var = new LocalVar{};
 	var->type = type;
-	var->name = std::to_string(annoyCounter++);
+	var->name = prefix + std::to_string(annoyCounter[prefix]++);
 	add_local_var(var);
 	return var;
 }
 
-IR::PtrVar *IRBuilder::register_annoy_ptr_var(IR::Type *obj_type) {
+IR::PtrVar *IRBuilder::register_annoy_ptr_var(IR::Type *obj_type, std::string const &prefix) {
 	auto var = new PtrVar{};
 	var->type = &ptrType;
 	var->objType = obj_type;
-	var->name = std::to_string(annoyCounter++);
+	var->name = prefix + std::to_string(annoyCounter[prefix]++);
 	add_local_var(var);
 	return var;
 }
@@ -443,7 +459,7 @@ void IRBuilder::visitNewExprNode(AstNewExprNode *node) {
 	auto call = new CallStmt{};
 	call->func = name2function["malloc"];
 	call->args.push_back(new LiteralInt{type->size()});
-	call->res = register_annoy_var(&ptrType);
+	call->res = register_annoy_var(&ptrType, ".new.");
 	add_stmt(call);
 	exprResult[node] = call->res;
 }
@@ -627,7 +643,7 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 		phi->branches = {{&literal_false, calc_left}, {rhs_res, calc_right}};
 	else
 		phi->branches = {{&literal_true, calc_left}, {rhs_res, calc_right}};
-	exprResult[node] = phi->res = register_annoy_var(&boolType);
+	exprResult[node] = phi->res = register_annoy_var(&boolType, ".short.");
 	add_stmt(phi);
 }
 
@@ -639,7 +655,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		add->cmd = node->op == "++" ? "add" : "sub";
 		add->lhs = remove_variable_pointer(exprResult[node->expr]);
 		add->rhs = &literal_one;
-		add->res = register_annoy_var(&intType);
+		add->res = register_annoy_var(&intType, ".arith.");
 		auto store = new StoreStmt{};
 		store->value = add->res;
 		store->pointer = dynamic_cast<Var *>(exprResult[node->expr]);
@@ -660,7 +676,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		sub->cmd = "sub";
 		sub->lhs = &literal_zero;
 		sub->rhs = remove_variable_pointer(exprResult[node->expr]);
-		sub->res = register_annoy_var(&intType);
+		sub->res = register_annoy_var(&intType, ".arith.");
 		add_stmt(sub);
 		exprResult[node] = sub->res;
 	}
@@ -670,7 +686,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		xor_->cmd = "xor";
 		xor_->lhs = remove_variable_pointer(exprResult[node->expr]);
 		xor_->rhs = &literal_true;
-		xor_->res = register_annoy_var(&boolType);
+		xor_->res = register_annoy_var(&boolType, ".arith.");
 		add_stmt(xor_);
 		exprResult[node] = xor_->res;
 	}
@@ -680,7 +696,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		xor_->cmd = "xor";
 		xor_->lhs = remove_variable_pointer(exprResult[node->expr]);
 		xor_->rhs = &literal_minus_one;
-		xor_->res = register_annoy_var(&intType);
+		xor_->res = register_annoy_var(&intType, ".arith.");
 		add_stmt(xor_);
 	}
 	else
@@ -706,7 +722,7 @@ void IRBuilder::visitFuncCallExprNode(AstFuncCallExprNode *node) {
 	if (p == name2function.end()) p = name2function.find(func_name);
 	call->func = p->second;
 	call->args = std::move(args);
-	call->res = (call->func->type == &voidType ? nullptr : register_annoy_var(call->func->type));
+	call->res = (call->func->type == &voidType ? nullptr : register_annoy_var(call->func->type, ".call."));
 	add_stmt(call);
 	exprResult[node] = call->res;
 }
@@ -736,7 +752,7 @@ void IRBuilder::visitArrayAccessExprNode(AstArrayAccessExprNode *node) {
 	gep->pointer = dynamic_cast<Var *>(array);
 	gep->indices.push_back(index);
 	gep->typeName = type->to_string();
-	gep->res = register_annoy_ptr_var(type);
+	gep->res = register_annoy_ptr_var(type, ".arr.");
 	add_stmt(gep);
 	exprResult[node] = gep->res;
 }
@@ -772,8 +788,67 @@ void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 		auto phi = new PhiStmt{};
 		phi->branches.emplace_back(true_res, true_expr);
 		phi->branches.emplace_back(false_res, false_expr);
-		phi->res = register_annoy_var(toIRType(node->valueType));
+		phi->res = register_annoy_var(toIRType(node->valueType), ".ternary_res.");
 		add_stmt(phi);
 		exprResult[node] = phi->res;
 	}
+}
+
+void IRBuilder::create_init_global_var_function() {
+	if (globalInitList.empty())
+		return;
+
+	auto first_sign = new GlobalVar{};
+	first_sign->name = ".global_var_inited";
+	first_sign->type = &boolType;
+	module->globalVars.push_back(first_sign);
+
+	auto first_sign_stmt = new GlobalStmt{};
+	first_sign_stmt->var = first_sign;
+	first_sign_stmt->value = &literal_false;
+	module->variables.push_back(first_sign_stmt);
+
+	auto func = new Function{};
+	func->name = ".init_global_var";
+	func->type = &voidType;
+	func->blocks.emplace_back(new Block{"entry"});
+	currentFunction = func;
+
+	auto init_block = new Block{"init"};
+	auto end_block = new Block{"end"};
+
+	auto is_first = new CondBrStmt{};
+	is_first->cond = remove_variable_pointer(first_sign);
+	is_first->trueBlock = end_block;
+	is_first->falseBlock = init_block;
+	add_stmt(is_first);
+
+	add_block(init_block);
+	auto set_sign = new StoreStmt{};
+	set_sign->pointer = first_sign;
+	set_sign->value = &literal_true;
+	add_stmt(set_sign);
+	for (auto &init: globalInitList) {
+		visit(init.second);
+		auto store = new StoreStmt{};
+		store->value = remove_variable_pointer(exprResult[init.second]);
+		if (auto gs = dynamic_cast<GlobalStmt *>(init.first))
+			store->pointer = gs->var;
+		else if (auto gss = dynamic_cast<GlobalStringStmt *>(init.first))
+			store->pointer = gss->var;
+		add_stmt(store);
+	}
+	add_block(end_block);
+	add_terminals(func);
+	currentFunction = nullptr;
+	for (auto f: module->functions)
+		if (f->name == "main") {
+			auto call = new CallStmt{};
+			call->func = func;
+			call->res = nullptr;
+			auto &stmts = f->blocks[0]->stmts;
+			stmts.insert(stmts.begin(), call);
+			break;
+		}
+	module->functions.push_back(func);
 }

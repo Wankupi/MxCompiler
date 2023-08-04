@@ -16,13 +16,16 @@ private:
 	std::map<std::string, IR::StringLiteralVar *> literalStr2var;
 	std::stack<IR::Block *> loopBreakTo;
 	std::stack<IR::Block *> loopContinueTo;
-	int annoyCounter = 0;
+	std::map<std::string, int> annoyCounter;
 	int loopCounter = 0;
 	int ifCounter = 0;
 	int continueCounter = 0;
 	int breakCounter = 0;
 	int andOrCounter = 0;
 	int ternaryCounter = 0;
+
+	/// @brief <(GlobalStmt|GlobalStringStmt),Expr>
+	std::vector<std::pair<IR::Stmt *, AstExprNode *>> globalInitList;
 
 public:
 	IRBuilder() = default;
@@ -35,10 +38,10 @@ private:
 	void visitFileNode(AstFileNode *node) override;
 	void registerClass(AstClassNode *node);
 	void registerFunction(AstFunctionNode *node);
+	void registerGlobalVar(AstVarStmtNode *node);
+	void visitVarStmtNode(AstVarStmtNode *node) override;
 	void visitClassNode(AstClassNode *node) override;
 	void visitFunctionNode(AstFunctionNode *node) override;
-
-	void visitVarStmtNode(AstVarStmtNode *node) override;
 	void visitBlockStmtNode(AstBlockStmtNode *node) override;
 	void visitExprStmtNode(AstExprStmtNode *node) override;
 
@@ -76,11 +79,12 @@ private:
 	void add_block(IR::Block *block);
 	void add_local_var(IR::LocalVar *node);
 	void add_global_var(IR::GlobalVar *node);
-	IR::LocalVar *register_annoy_var(IR::Type *type);
-	IR::PtrVar *register_annoy_ptr_var(IR::Type *obj_type);
+	IR::LocalVar *register_annoy_var(IR::Type *type, std::string const &prefix = "");
+	IR::PtrVar *register_annoy_ptr_var(IR::Type *obj_type, std::string const &prefix = "");
 	void push_loop(IR::Block *step, IR::Block *after);
 	void pop_loop();
 	IR::StringLiteralVar *register_literal_str(const std::string &str);
 
 	void init_function_params(IR::Function *func);
+	void create_init_global_var_function();
 };
