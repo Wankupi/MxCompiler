@@ -53,8 +53,6 @@ int main(int argc, char *argv[]) {
 		if (config.contains("-fsyntax-only"))
 			return 0;
 
-		//		ast.root->print();
-
 		IRBuilder irBuilder;
 		irBuilder.visit(ast.root);
 
@@ -71,8 +69,8 @@ int main(int argc, char *argv[]) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	system("llc --march=riscv32 test.ll");
-	//	system("./ravel --oj-mode --input-file=test.in --output-file=test.out test.s");
+	//	system("llc --march=riscv32 test.ll");
+	//	system("./ravel --oj-mode --input-file=test.in --output-file=test.out");
 	return 0;
 }
 

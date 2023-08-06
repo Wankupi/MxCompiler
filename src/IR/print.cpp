@@ -121,14 +121,6 @@ std::string LiteralNull::get_name() const {
 	return "null";
 }
 
-
-void LiteralString::print(std::ostream &out) const {
-	out << "<TODO: string literal>";
-}
-std::string LiteralString::get_name() const {
-	return "<TODO: string literal>";
-}
-
 void ArithmeticStmt::print(std::ostream &out) const {
 	out << res->get_name() << " = " << cmd << " " << res->type->to_string() << " ";
 	if (!lhs) out << "\033[31m%TODO\033[0m";
@@ -215,11 +207,12 @@ void GlobalStringStmt::print(std::ostream &out) const {
 	for (auto c: value) {
 		if (c == '\n')
 			out << "\\0A";
-
 		else if (c == '\\')
 			out << "\\\\";
 		else if (c == '"')
 			out << "\\22";
+		else if (c == 0)
+			out << "\\00";
 		else
 			out << c;
 	}

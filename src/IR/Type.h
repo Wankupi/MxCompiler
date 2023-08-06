@@ -37,6 +37,8 @@ struct PtrType : public PrimitiveType {
 	[[nodiscard]] int size() const override { return 4; }
 };
 
+struct StringType : public PtrType {};
+
 struct ClassType : public Type {
 	std::string name;
 	std::vector<PrimitiveType *> fields;

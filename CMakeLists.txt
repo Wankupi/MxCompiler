@@ -3,6 +3,8 @@ project(MxCompiler)
 
 set(CMAKE_CXX_STANDARD 20)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 add_subdirectory(MxAntlr)
 
 include_directories(/usr/include/antlr4-runtime/)
@@ -15,20 +17,37 @@ add_executable(code ${sources})
 
 target_link_libraries(code MxAntlr)
 
-set(TestRootPath "${PROJECT_SOURCE_DIR}/data/sema")
-file(GLOB_RECURSE test_files RELATIVE ${TestRootPath} ${TestRootPath}/**.mx)
+
+set(TestdataPath "${PROJECT_SOURCE_DIR}/data")
+set(SemaPath "${TestdataPath}/sema")
+file(GLOB_RECURSE test_files RELATIVE ${SemaPath} ${SemaPath}/**.mx)
 foreach (test_file ${test_files})
+    string(REGEX REPLACE ".*/" "" filename "${test_file}")
+    set(testname "sema|${filename}")
     if (${test_file} MATCHES ".*lambda.*")
         continue()
     endif ()
-    execute_process(COMMAND grep "Verdict: " "${TestRootPath}/${test_file}" COMMAND sed "s/Verdict: //"
+    execute_process(COMMAND grep "Verdict: " "${SemaPath}/${test_file}" COMMAND sed "s/Verdict: //"
             OUTPUT_VARIABLE verdict)
-    add_test(NAME ${test_file}
-            COMMAND $<TARGET_FILE:code> ${TestRootPath}/${test_file}
+    add_test(NAME ${testname}
+            COMMAND $<TARGET_FILE:code> ${SemaPath}/${test_file} -fsyntax-only
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "sema")
     if (NOT "${verdict}" STREQUAL "Success\n")
-        set_tests_properties(${test_file} PROPERTIES WILL_FAIL true)
+        set_tests_properties(${testname} PROPERTIES WILL_FAIL true)
+        message(STATUS "Test ${testname} will fail")
     endif ()
+endforeach ()
+
+set(CodegenPath "${TestdataPath}/codegen")
+file(GLOB_RECURSE test_files RELATIVE ${CodegenPath} ${CodegenPath}/**.mx)
+foreach (test_file ${test_files})
+    string(REGEX REPLACE ".*/" "" filename "${test_file}")
+    set(testname "codegen|${filename}")
+    add_test(NAME ${testname}
+            COMMAND "${PROJECT_SOURCE_DIR}/run-codegen.bash" $<TARGET_FILE:code> ${CodegenPath}/${test_file}
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "codegen")
 endforeach ()
 
 enable_testing()

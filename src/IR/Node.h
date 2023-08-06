@@ -67,11 +67,6 @@ struct LiteralNull : public Literal {
 	void print(std::ostream &out) const override;
 	[[nodiscard]] std::string get_name() const override;
 };
-struct LiteralString : public Literal {
-	std::string value;
-	void print(std::ostream &out) const override;
-	[[nodiscard]] std::string get_name() const override;
-};
 
 struct Stmt : public IRNode {};
 

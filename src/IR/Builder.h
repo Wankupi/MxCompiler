@@ -51,6 +51,7 @@ private:
 	void visitBinaryExprNode(AstBinaryExprNode *node) override;
 
 	void enterAndOrBinaryExprNode(AstBinaryExprNode *node);
+	void enterStringBinaryExprNode(AstBinaryExprNode *node);
 
 	void visitAtomExprNode(AstAtomExprNode *node) override;
 	void visitAssignExprNode(AstAssignExprNode *node) override;
@@ -59,7 +60,7 @@ private:
 	void visitNewExprNode(AstNewExprNode *node) override;
 	void visitSingleExprNode(AstSingleExprNode *node) override;
 	void visitTernaryExprNode(AstTernaryExprNode *node) override;
-
+	void visitNewArrayExpr(AstNewExprNode *node);
 
 	// statements
 	void visitReturnStmtNode(AstReturnStmtNode *node) override;
@@ -87,4 +88,5 @@ private:
 
 	void init_function_params(IR::Function *func);
 	void create_init_global_var_function();
+	IR::Val *type_to_default_value(IR::Type *type);
 };

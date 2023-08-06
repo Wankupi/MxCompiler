@@ -9,3 +9,4 @@ out/
 MxAntlr/*
 !MxAntlr/CMakeLists.txt
 data
+run
