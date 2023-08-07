@@ -23,6 +23,7 @@ private:
 	int breakCounter = 0;
 	int andOrCounter = 0;
 	int ternaryCounter = 0;
+	int newCounter = 0;
 
 	/// @brief <(GlobalStmt|GlobalStringStmt),Expr>
 	std::vector<std::pair<IR::Stmt *, AstExprNode *>> globalInitList;
@@ -60,7 +61,7 @@ private:
 	void visitNewExprNode(AstNewExprNode *node) override;
 	void visitSingleExprNode(AstSingleExprNode *node) override;
 	void visitTernaryExprNode(AstTernaryExprNode *node) override;
-	void visitNewArrayExpr(AstNewExprNode *node);
+	IR::Var *TransformNewToFor(std::vector<IR::Val *> const &array_size, int total_dim, std::string const &base_typename, int dep = 0);
 
 	// statements
 	void visitReturnStmtNode(AstReturnStmtNode *node) override;

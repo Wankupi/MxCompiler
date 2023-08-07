@@ -69,8 +69,9 @@ int main(int argc, char *argv[]) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	//	system("llc --march=riscv32 test.ll");
+	//		system("llc --march=riscv32 test.ll");
 	//	system("./ravel --oj-mode --input-file=test.in --output-file=test.out");
+	//	system("clang -m32 test.ll builtin.ll -o binary");
 	return 0;
 }
 

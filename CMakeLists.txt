@@ -35,7 +35,6 @@ foreach (test_file ${test_files})
     set_tests_properties(${testname} PROPERTIES LABELS "sema")
     if (NOT "${verdict}" STREQUAL "Success\n")
         set_tests_properties(${testname} PROPERTIES WILL_FAIL true)
-        message(STATUS "Test ${testname} will fail")
     endif ()
 endforeach ()
 

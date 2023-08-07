@@ -18,7 +18,7 @@ void Function::print(std::ostream &out) const {
 	if (blocks.empty())
 		out << "declare ";
 	else
-		out << "define ";
+		out << "\ndefine ";
 	if (type)
 		out << type->to_string() << " ";
 	out << "@" << name << "(";
@@ -31,7 +31,7 @@ void Function::print(std::ostream &out) const {
 		out << " {\n";
 		for (auto block: blocks)
 			block->print(out);
-		out << "}";
+		out << "}\n";
 	}
 }
 
@@ -69,7 +69,7 @@ target triple = "riscv32-unknown-unknown-elf"
 	out << "\n";
 	for (auto &f: functions) {
 		f->print(out);
-		out << "\n\n";
+		out << '\n';
 	}
 }
 
@@ -109,10 +109,6 @@ std::string LiteralInt::get_name() const {
 	return std::to_string(value);
 }
 
-//void LiteralChar::print(std::ostream &out) const {
-//	out << "i8 " << value;
-//}
-
 void LiteralNull::print(std::ostream &out) const {
 	out << "ptr null";
 }
@@ -123,13 +119,9 @@ std::string LiteralNull::get_name() const {
 
 void ArithmeticStmt::print(std::ostream &out) const {
 	out << res->get_name() << " = " << cmd << " " << res->type->to_string() << " ";
-	if (!lhs) out << "\033[31m%TODO\033[0m";
-	else
-		out << lhs->get_name();
+	out << lhs->get_name();
 	out << ", ";
-	if (!rhs) out << "\033[31m%TODO\033[0m";
-	else
-		out << rhs->get_name();
+	out << rhs->get_name();
 }
 
 void LoadStmt::print(std::ostream &out) const {
@@ -176,8 +168,8 @@ void CondBrStmt::print(std::ostream &out) const {
 }
 
 void IcmpStmt::print(std::ostream &out) const {
-	out << res->get_name() << " = icmp " << cmd << " i32 ";
-	out << lhs->get_name();
+	out << res->get_name() << " = icmp " << cmd << " ";
+	lhs->print(out);
 	out << ", ";
 	out << rhs->get_name();
 }
