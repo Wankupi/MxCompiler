@@ -960,17 +960,19 @@ void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 	visit(node->trueExpr);
 	auto true_res = remove_variable_pointer(exprResult[node->trueExpr]);
 	add_stmt(br_end);
+	auto from_true = currentFunction->blocks.back();
 
 	add_block(false_expr);
 	visit(node->falseExpr);
 	auto false_res = remove_variable_pointer(exprResult[node->falseExpr]);
 	add_stmt(br_end);
+	auto from_false = currentFunction->blocks.back();
 
 	add_block(end);
 	if (!node->valueType.is_void()) {
 		auto phi = new PhiStmt{};
-		phi->branches.emplace_back(true_res, true_expr);
-		phi->branches.emplace_back(false_res, false_expr);
+		phi->branches.emplace_back(true_res, from_true);
+		phi->branches.emplace_back(false_res, from_false);
 		phi->res = register_annoy_var(toIRType(node->valueType), ".ternary_res.");
 		add_stmt(phi);
 		exprResult[node] = phi->res;
