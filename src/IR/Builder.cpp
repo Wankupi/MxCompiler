@@ -1038,7 +1038,6 @@ void IRBuilder::create_init_global_var_function() {
 	module->functions.push_back(func);
 }
 
-
 IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, int total_dim, std::string const &base_typename, int dep) {
 	const std::map<std::string, IR::Type *> type_map = {
 			{"int", &intType},
@@ -1110,9 +1109,8 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		make_array->res = register_annoy_var(&ptrType, ".new_array.");
 		add_stmt(make_array);
 
-		if (dep + 1 == array_size.size() && (total_dim > array_size.size() || (base_typename == "int" || base_typename == "bool")))
+		if (dep + 1 == array_size.size())
 			return make_array->res;
-
 
 		std::string label = "new_" + std::to_string(newCounter) + "_for_" + std::to_string(dep);
 		auto cond_block = new Block{label + "_cond"};
@@ -1147,7 +1145,6 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 
 		add_block(body_block);
 		auto ptr = TransformNewToFor(array_size, total_dim, base_typename, dep + 1);
-
 		auto gep = new GetElementPtrStmt{};
 		gep->res = register_annoy_var(&ptrType, ".new_for_gep.");
 		gep->pointer = make_array->res;
