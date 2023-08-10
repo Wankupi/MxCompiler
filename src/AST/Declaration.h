@@ -2,6 +2,7 @@
 #include "Semantic/Scope.h"
 #include <string>
 
+
 struct AstBaseVisitor;
 
 struct AstNode {
@@ -9,9 +10,6 @@ public:
 	AstNode() = default;
 	virtual ~AstNode() = default;
 	virtual void print() = 0;
-	virtual std::string NodeType() {
-		return "AstBaseNode";
-	}
 	virtual void accept(AstBaseVisitor *visitor) {}
 
 public:
@@ -45,3 +43,4 @@ struct AstForStmtNode;
 struct AstWhileStmtNode;
 struct AstIfStmtNode;
 struct AstFileNode;
+

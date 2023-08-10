@@ -9,9 +9,6 @@
 struct AstExprNode : public AstNode {
 	TypeInfo valueType;
 	~AstExprNode() override = default;
-	std::string NodeType() override {
-		return "AstExprNode";
-	}
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitExprNode(this); }
 };
 
@@ -21,9 +18,6 @@ struct AstTypeNode : public AstNode {
 	size_t dimension = 0;
 	~AstTypeNode() override {
 		for (auto &size: arraySize) delete size;
-	}
-	std::string NodeType() override {
-		return "AstTypeNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitTypeNode(this); }
@@ -36,9 +30,6 @@ struct AstArrayAccessExprNode : public AstExprNode {
 		delete array;
 		delete index;
 	}
-	std::string NodeType() override {
-		return "AstArrayAccessExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitArrayAccessExprNode(this); }
 };
@@ -48,9 +39,6 @@ struct AstMemberAccessExprNode : public AstExprNode {
 	std::string member;
 	~AstMemberAccessExprNode() override {
 		delete object;
-	}
-	std::string NodeType() override {
-		return "AstMemberAccessExprNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitMemberAccessExprNode(this); }
@@ -63,9 +51,6 @@ struct AstBinaryExprNode : public AstExprNode {
 		delete lhs;
 		delete rhs;
 	}
-	std::string NodeType() override {
-		return "AstBinaryExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitBinaryExprNode(this); }
 };
@@ -74,9 +59,6 @@ struct AstAtomExprNode : public AstExprNode {
 	std::string name;
 	std::string uniqueName;
 	~AstAtomExprNode() override = default;
-	std::string NodeType() override {
-		return "AstAtomExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitAtomExprNode(this); }
 };
@@ -89,9 +71,6 @@ struct AstAssignExprNode : public AstExprNode {
 		delete lhs;
 		delete rhs;
 	}
-	std::string NodeType() override {
-		return "AstAssignExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitAssignExprNode(this); }
 };
@@ -99,9 +78,6 @@ struct AstAssignExprNode : public AstExprNode {
 struct AstLiterExprNode : public AstExprNode {
 	std::string value;
 	~AstLiterExprNode() override = default;
-	std::string NodeType() override {
-		return "AstLiterExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitLiterExprNode(this); }
 };
@@ -112,9 +88,6 @@ struct AstFuncCallExprNode : public AstExprNode {
 	~AstFuncCallExprNode() override {
 		delete func;
 		for (auto &arg: args) delete arg;
-	}
-	std::string NodeType() override {
-		return "AstCallExprNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitFuncCallExprNode(this); }
@@ -128,9 +101,6 @@ struct AstNewExprNode : public AstExprNode {
 	~AstNewExprNode() override {
 		delete type;
 	}
-	std::string NodeType() override {
-		return "AstNewExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitNewExprNode(this); }
 };
@@ -141,9 +111,6 @@ struct AstSingleExprNode : public AstExprNode {
 	bool right = false;
 	~AstSingleExprNode() override {
 		delete expr;
-	}
-	std::string NodeType() override {
-		return "AstSingleExprNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitSingleExprNode(this); }
@@ -156,18 +123,12 @@ struct AstTernaryExprNode : public AstExprNode {
 		delete trueExpr;
 		delete falseExpr;
 	}
-	std::string NodeType() override {
-		return "AstTernaryExprNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitTernaryExprNode(this); }
 };
 
 struct AstStmtNode : public AstNode {
 	~AstStmtNode() override = default;
-	std::string NodeType() override {
-		return "AstStmtNode";
-	}
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitStmtNode(this); }
 };
 
@@ -175,9 +136,6 @@ struct AstBlockStmtNode : public AstStmtNode {
 	std::vector<AstStmtNode *> stmts;
 	~AstBlockStmtNode() override {
 		for (auto &stmt: stmts) delete stmt;
-	}
-	std::string NodeType() override {
-		return "AstBlockStmtNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitBlockStmtNode(this); }
@@ -190,9 +148,6 @@ struct AstVarStmtNode : public AstStmtNode {
 	~AstVarStmtNode() override {
 		delete type;
 		for (auto &var: vars) delete var.second;
-	}
-	std::string NodeType() override {
-		return "AstVariableNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitVarStmtNode(this); }
@@ -210,18 +165,12 @@ struct AstFunctionNode : public AstNode {
 		for (auto &param: params) delete param.first;
 		delete body;
 	}
-	std::string NodeType() override {
-		return "AstFunctionNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitFunctionNode(this); }
 };
 
 struct AstConstructFuncNode : public AstFunctionNode {
 	~AstConstructFuncNode() override = default;
-	std::string NodeType() override {
-		return "AstConstructFuncNode";
-	}
 	void print() override;
 };
 
@@ -235,9 +184,6 @@ struct AstClassNode : public AstNode {
 		for (auto &constructor: constructors) delete constructor;
 		for (auto &function: functions) delete function;
 	}
-	std::string NodeType() override {
-		return "AstClassNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitClassNode(this); }
 };
@@ -247,18 +193,12 @@ struct AstExprStmtNode : public AstStmtNode {
 	~AstExprStmtNode() override {
 		for (auto &e: expr) delete e;
 	}
-	std::string NodeType() override {
-		return "AstExprStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitExprStmtNode(this); }
 };
 
 struct AstFlowStmtNode : public AstStmtNode {
 	~AstFlowStmtNode() override = default;
-	std::string NodeType() override {
-		return "AstFlowStmtNode";
-	}
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitFlowStmtNode(this); }
 };
 
@@ -267,27 +207,18 @@ struct AstReturnStmtNode : public AstFlowStmtNode {
 	~AstReturnStmtNode() override {
 		delete expr;
 	}
-	std::string NodeType() override {
-		return "AstReturnStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitReturnStmtNode(this); }
 };
 
 struct AstBreakStmtNode : public AstFlowStmtNode {
 	~AstBreakStmtNode() override = default;
-	std::string NodeType() override {
-		return "AstBreakStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitBreakStmtNode(this); }
 };
 
 struct AstContinueStmtNode : public AstFlowStmtNode {
 	~AstContinueStmtNode() override = default;
-	std::string NodeType() override {
-		return "AstContinueStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitContinueStmtNode(this); }
 };
@@ -302,9 +233,6 @@ struct AstForStmtNode : public AstStmtNode {
 		delete step;
 		for (auto &stmt: body) delete stmt;
 	}
-	std::string NodeType() override {
-		return "AstForStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitForStmtNode(this); }
 };
@@ -315,9 +243,6 @@ struct AstWhileStmtNode : public AstStmtNode {
 	~AstWhileStmtNode() override {
 		delete cond;
 		for (auto &stmt: body) delete stmt;
-	}
-	std::string NodeType() override {
-		return "AstWhileStmtNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitWhileStmtNode(this); }
@@ -333,9 +258,6 @@ struct AstIfStmtNode : public AstStmtNode {
 		}
 		delete elseStmt;
 	}
-	std::string NodeType() override {
-		return "AstIfStmtNode";
-	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitIfStmtNode(this); }
 };
@@ -345,9 +267,6 @@ struct AstFileNode final : public AstNode {
 	std::vector<AstNode *> children;
 	~AstFileNode() override {
 		for (auto &child: children) delete child;
-	}
-	std::string NodeType() override {
-		return "AstFileNode";
 	}
 	void print() override;
 	void accept(AstBaseVisitor *visitor) override { return visitor->visitFileNode(this); }
