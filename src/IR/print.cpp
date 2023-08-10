@@ -73,7 +73,7 @@ target triple = "riscv32-unknown-unknown-elf"
 	}
 }
 
-void Block::print(std::ostream &out) const {
+void BasicBlock::print(std::ostream &out) const {
 	out << label << ":\n";
 	for (auto stmt: stmts) {
 		out << '\t';

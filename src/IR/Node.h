@@ -1,19 +1,10 @@
 #pragma once
+#include "IRBaseVisitor.h"
 #include "Type.h"
 #include "Val.h"
 #include <sstream>
 #include <string>
 #include <vector>
-
-struct IRNode {
-	virtual ~IRNode() = default;
-	virtual void print(std::ostream &out) const = 0;
-	[[nodiscard]] std::string to_string() const {
-		std::stringstream ss;
-		print(ss);
-		return ss.str();
-	}
-};
 
 namespace IR {
 
@@ -22,44 +13,50 @@ struct Class : public IRNode {
 	std::map<std::string, size_t> name2index;
 	void print(std::ostream &out) const override;
 	void add_filed(PrimitiveType *type, const std::string &name);
+	void accept(IRBaseVisitor *visitor) override { visitor->visitClass(this); }
 };
 
 struct Stmt : public IRNode {};
 
-struct Block : public IRNode {
-	explicit Block(std::string label) : label(std::move(label)) {}
+struct BasicBlock : public IRNode {
+	explicit BasicBlock(std::string label) : label(std::move(label)) {}
 	std::string label;
 	std::vector<Stmt *> stmts;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitBasicBlock(this); }
 };
 
 struct Function : public IRNode {
 	Type *type;
 	std::string name;
 	std::vector<std::pair<Type *, std::string>> params;
-	std::vector<Block *> blocks;
+	std::vector<BasicBlock *> blocks;
 
 	std::vector<LocalVar *> localVars;// stored for memory control
 
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitFunction(this); }
 };
 
 struct AllocaStmt : public Stmt {
 	Type *type = nullptr;
 	Var *res = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitAllocaStmt(this); }
 };
 
 struct StoreStmt : public Stmt {
 	Val *value = nullptr;
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitStoreStmt(this); }
 };
 
 struct LoadStmt : public Stmt {
 	Var *res = nullptr;
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitLoadStmt(this); }
 };
 
 struct ArithmeticStmt : public Stmt {
@@ -68,6 +65,7 @@ struct ArithmeticStmt : public Stmt {
 	Val *rhs = nullptr;
 	std::string cmd;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitArithmeticStmt(this); }
 };
 
 struct IcmpStmt : public Stmt {
@@ -76,6 +74,7 @@ struct IcmpStmt : public Stmt {
 	Val *rhs = nullptr;
 	std::string cmd;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitIcmpStmt(this); }
 };
 
 struct RetStmt : public Stmt {
@@ -83,6 +82,7 @@ struct RetStmt : public Stmt {
 	explicit RetStmt(Val *value) : value(value) {}
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitRetStmt(this); }
 };
 
 struct GetElementPtrStmt : public Stmt {
@@ -91,6 +91,7 @@ struct GetElementPtrStmt : public Stmt {
 	std::string typeName;
 	std::vector<Val *> indices;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitGetElementPtrStmt(this); }
 };
 
 struct CallStmt : public Stmt {
@@ -98,42 +99,49 @@ struct CallStmt : public Stmt {
 	Function *func;
 	std::vector<Val *> args;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitCallStmt(this); }
 };
 
 struct BrStmt : public Stmt {};
 
 struct DirectBrStmt : public BrStmt {
-	Block *block = nullptr;
+	BasicBlock *block = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitDirectBrStmt(this); }
 };
 
 struct CondBrStmt : public BrStmt {
 	Val *cond = nullptr;
-	Block *trueBlock = nullptr;
-	Block *falseBlock = nullptr;
+	BasicBlock *trueBlock = nullptr;
+	BasicBlock *falseBlock = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitCondBrStmt(this); }
 };
 
 struct PhiStmt : public Stmt {
 	Var *res = nullptr;
-	std::vector<std::pair<Val *, Block *>> branches;
+	std::vector<std::pair<Val *, BasicBlock *>> branches;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitPhiStmt(this); }
 };
 
 struct UnreachableStmt : public Stmt {
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitUnreachableStmt(this); }
 };
 
 struct GlobalStmt : public Stmt {
 	GlobalVar *var = nullptr;
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitGlobalStmt(this); }
 };
 
 struct GlobalStringStmt : public Stmt {
 	StringLiteralVar *var = nullptr;
 	std::string value;
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitGlobalStringStmt(this); }
 };
 
 struct Module : public IRNode {
@@ -141,7 +149,9 @@ struct Module : public IRNode {
 	std::vector<Function *> functions;
 	std::vector<GlobalStmt *> variables;
 	std::vector<GlobalStringStmt *> stringLiterals;
+
 	void print(std::ostream &out) const override;
+	void accept(IRBaseVisitor *visitor) override { visitor->visitModule(this); }
 
 	std::vector<Var *> globalVars;// stored for memory control
 };

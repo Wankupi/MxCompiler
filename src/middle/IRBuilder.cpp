@@ -1,6 +1,6 @@
-#include "Builder.h"
 #include "AST/AstNode.h"
 #include "IR/Type.h"
+#include "IRBuilder.h"
 
 #include <iostream>
 
@@ -166,7 +166,7 @@ void add_terminals(Function *func) {
 void IRBuilder::visitFunctionNode(AstFunctionNode *node) {
 	std::string name = (currentClass ? currentClass->type.name + "." : "") + node->name;
 	auto func = name2function[name];
-	func->blocks.push_back(new Block{"entry"});
+	func->blocks.push_back(new BasicBlock{"entry"});
 	currentFunction = func;
 	annoyCounter.clear();
 	init_function_params(func);
@@ -652,9 +652,9 @@ void IRBuilder::visitReturnStmtNode(AstReturnStmtNode *node) {
 
 void IRBuilder::visitWhileStmtNode(AstWhileStmtNode *node) {
 	++loopCounter;
-	auto cond = new Block{"while_cond_" + std::to_string(loopCounter)};
-	auto body = new Block{"while_body_" + std::to_string(loopCounter)};
-	auto afterLoop = new Block{"while_end_" + std::to_string(loopCounter)};
+	auto cond = new BasicBlock{"while_cond_" + std::to_string(loopCounter)};
+	auto body = new BasicBlock{"while_body_" + std::to_string(loopCounter)};
+	auto afterLoop = new BasicBlock{"while_end_" + std::to_string(loopCounter)};
 	auto br = new DirectBrStmt{};
 	br->block = cond;
 	add_stmt(br);
@@ -681,7 +681,7 @@ void IRBuilder::visitWhileStmtNode(AstWhileStmtNode *node) {
 	add_block(afterLoop);
 }
 
-void IRBuilder::add_block(IR::Block *block) {
+void IRBuilder::add_block(IR::BasicBlock *block) {
 	currentFunction->blocks.push_back(block);
 }
 
@@ -691,10 +691,10 @@ void IRBuilder::visitForStmtNode(AstForStmtNode *node) {
 
 	// create blocks
 	++loopCounter;
-	auto body = new Block{"for_body_" + std::to_string(loopCounter)};
-	auto cond = node->cond ? new Block{"for_cond_" + std::to_string(loopCounter)} : body;
-	auto step = node->step ? new Block{"for_step_" + std::to_string(loopCounter)} : cond;
-	auto afterLoop = new Block{"for_end_" + std::to_string(loopCounter)};
+	auto body = new BasicBlock{"for_body_" + std::to_string(loopCounter)};
+	auto cond = node->cond ? new BasicBlock{"for_cond_" + std::to_string(loopCounter)} : body;
+	auto step = node->step ? new BasicBlock{"for_step_" + std::to_string(loopCounter)} : cond;
+	auto afterLoop = new BasicBlock{"for_end_" + std::to_string(loopCounter)};
 
 	auto br2cond = new DirectBrStmt{};
 	br2cond->block = cond;
@@ -730,7 +730,7 @@ void IRBuilder::visitForStmtNode(AstForStmtNode *node) {
 	add_block(afterLoop);
 }
 
-void IRBuilder::push_loop(IR::Block *step, IR::Block *after) {
+void IRBuilder::push_loop(IR::BasicBlock *step, IR::BasicBlock *after) {
 	loopBreakTo.push(after);
 	loopContinueTo.push(step);
 }
@@ -744,7 +744,7 @@ void IRBuilder::visitBreakStmtNode(AstBreakStmtNode *node) {
 	auto br = new DirectBrStmt{};
 	br->block = loopBreakTo.top();
 	add_stmt(br);
-	auto block = new Block{"after_break_" + std::to_string(++breakCounter)};
+	auto block = new BasicBlock{"after_break_" + std::to_string(++breakCounter)};
 	add_block(block);
 }
 
@@ -752,19 +752,19 @@ void IRBuilder::visitContinueStmtNode(AstContinueStmtNode *node) {
 	auto br = new DirectBrStmt{};
 	br->block = loopContinueTo.top();
 	add_stmt(br);
-	auto block = new Block{"after_continue_" + std::to_string(++continueCounter)};
+	auto block = new BasicBlock{"after_continue_" + std::to_string(++continueCounter)};
 	add_block(block);
 }
 
 void IRBuilder::visitIfStmtNode(AstIfStmtNode *node) {
-	auto after = new Block{"if_end_" + std::to_string(ifCounter)};
+	auto after = new BasicBlock{"if_end_" + std::to_string(ifCounter)};
 	auto br_after = new DirectBrStmt{};
 	br_after->block = after;
 
 	for (auto &clause: node->ifStmts) {
 		++ifCounter;
-		auto true_block = new Block{"if_true_" + std::to_string(ifCounter)};
-		auto false_block = (&clause != &node->ifStmts.back() || node->elseStmt) ? new Block{"if_false_" + std::to_string(ifCounter)} : nullptr;
+		auto true_block = new BasicBlock{"if_true_" + std::to_string(ifCounter)};
+		auto false_block = (&clause != &node->ifStmts.back() || node->elseStmt) ? new BasicBlock{"if_false_" + std::to_string(ifCounter)} : nullptr;
 
 		visit(clause.first);
 		auto br_cond = new CondBrStmt{};
@@ -790,8 +790,8 @@ void IRBuilder::visitIfStmtNode(AstIfStmtNode *node) {
 
 void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	++andOrCounter;
-	auto calc_right = new Block{"short_rhs_" + std::to_string(andOrCounter)};
-	auto result = new Block{"short_result_" + std::to_string(andOrCounter)};
+	auto calc_right = new BasicBlock{"short_rhs_" + std::to_string(andOrCounter)};
+	auto result = new BasicBlock{"short_result_" + std::to_string(andOrCounter)};
 
 	visit(node->lhs);
 	auto calc_left = currentFunction->blocks.back();
@@ -942,9 +942,9 @@ void IRBuilder::visitArrayAccessExprNode(AstArrayAccessExprNode *node) {
 
 void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 	++ternaryCounter;
-	auto true_expr = new Block{"ternary_true_" + std::to_string(ternaryCounter)};
-	auto false_expr = new Block{"ternary_false_" + std::to_string(ternaryCounter)};
-	auto end = new Block{"ternary_end_" + std::to_string(ternaryCounter)};
+	auto true_expr = new BasicBlock{"ternary_true_" + std::to_string(ternaryCounter)};
+	auto false_expr = new BasicBlock{"ternary_false_" + std::to_string(ternaryCounter)};
+	auto end = new BasicBlock{"ternary_end_" + std::to_string(ternaryCounter)};
 
 	visit(node->cond);
 	auto br_cond = new CondBrStmt{};
@@ -996,11 +996,11 @@ void IRBuilder::create_init_global_var_function() {
 	auto func = new Function{};
 	func->name = ".init_global_var";
 	func->type = &voidType;
-	func->blocks.emplace_back(new Block{"entry"});
+	func->blocks.emplace_back(new BasicBlock{"entry"});
 	currentFunction = func;
 
-	auto init_block = new Block{"init"};
-	auto end_block = new Block{"end"};
+	auto init_block = new BasicBlock{"init"};
+	auto end_block = new BasicBlock{"end"};
 
 	auto is_first = new CondBrStmt{};
 	is_first->cond = remove_variable_pointer(first_sign);
@@ -1113,9 +1113,9 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 			return make_array->res;
 
 		std::string label = "new_" + std::to_string(newCounter) + "_for_" + std::to_string(dep);
-		auto cond_block = new Block{label + "_cond"};
-		auto body_block = new Block{label + "_body"};
-		auto end_block = new Block{label + "_end"};
+		auto cond_block = new BasicBlock{label + "_cond"};
+		auto body_block = new BasicBlock{label + "_body"};
+		auto end_block = new BasicBlock{label + "_end"};
 
 		auto counter = register_annoy_var(&intType, ".new_for_idx.");
 		auto increased_counter = register_annoy_var(&intType, ".new_for_idx_inc.");

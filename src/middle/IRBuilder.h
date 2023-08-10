@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AST/AstBaseVisitor.h"
-#include "Node.h"
+#include "IR/Node.h"
 #include <stack>
 
 class IRBuilder : public AstBaseVisitor {
@@ -14,8 +14,8 @@ private:
 	std::map<std::string, IR::Var *> name2var;
 	std::map<std::string, IR::Class *> name2class;
 	std::map<std::string, IR::StringLiteralVar *> literalStr2var;
-	std::stack<IR::Block *> loopBreakTo;
-	std::stack<IR::Block *> loopContinueTo;
+	std::stack<IR::BasicBlock *> loopBreakTo;
+	std::stack<IR::BasicBlock *> loopContinueTo;
 	std::map<std::string, int> annoyCounter;
 	int loopCounter = 0;
 	int ifCounter = 0;
@@ -78,12 +78,12 @@ private:
 	static IR::PrimitiveType *toIRType(AstTypeNode *node);
 	static IR::PrimitiveType *toIRType(TypeInfo typeInfo);
 	void add_stmt(IR::Stmt *node);
-	void add_block(IR::Block *block);
+	void add_block(IR::BasicBlock *block);
 	void add_local_var(IR::LocalVar *node);
 	void add_global_var(IR::GlobalVar *node);
 	IR::LocalVar *register_annoy_var(IR::Type *type, std::string const &prefix = "");
 	IR::PtrVar *register_annoy_ptr_var(IR::Type *obj_type, std::string const &prefix = "");
-	void push_loop(IR::Block *step, IR::Block *after);
+	void push_loop(IR::BasicBlock *step, IR::BasicBlock *after);
 	void pop_loop();
 	IR::StringLiteralVar *register_literal_str(const std::string &str);
 
