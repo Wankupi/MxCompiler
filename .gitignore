@@ -10,3 +10,4 @@ MxAntlr/*
 !MxAntlr/CMakeLists.txt
 data
 run
+bin

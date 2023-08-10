@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cd resources/antlr4
+antlr4 -no-listener -visitor -o "../../MxAntlr" MxLexer.g4 MxParser.g4 -Dlanguage=Cpp >&2
+cd ..
+cd ..
+cmake -B build
+cmake --build build
+mkdir bin
+cp "./build/code" "./bin/mxc"
