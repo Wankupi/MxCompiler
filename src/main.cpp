@@ -12,7 +12,9 @@
 #include "Semantic/Scope.h"
 #include "Semantic/SemanticChecker.h"
 
-#include "IR/Builder.h"
+#include "middle/IRBuilder.h"
+
+#include "backend/InstMaker.h"
 
 #include <fstream>
 #include <iostream>
@@ -39,39 +41,50 @@ int main(int argc, char *argv[]) {
 
 		GlobalScope globalScope;
 
-		ClassCollector classCollector(&globalScope);
-		classCollector.init_builtin_classes();
-		classCollector.visit(ast.root);
-
-		FunctionCollector functionCollector(&globalScope);
-		functionCollector.init_builtin_functions();
-		functionCollector.visit(ast.root);
-
-		SemanticChecker semanticChecker(&globalScope);
-		semanticChecker.visit(ast.root);
-
+		{
+			ClassCollector classCollector(&globalScope);
+			classCollector.init_builtin_classes();
+			classCollector.visit(ast.root);
+		}
+		{
+			FunctionCollector functionCollector(&globalScope);
+			functionCollector.init_builtin_functions();
+			functionCollector.visit(ast.root);
+		}
+		{
+			SemanticChecker semanticChecker(&globalScope);
+			semanticChecker.visit(ast.root);
+		}
 		if (config.contains("-fsyntax-only"))
 			return 0;
 
 		IRBuilder irBuilder;
 		irBuilder.visit(ast.root);
 
-		std::ofstream out("test.ll", std::ios::out);
-		if (out.fail())
-			throw std::runtime_error("Cannot open file test.ll");
-
 		auto ir = irBuilder.getIR();
-		ir->print(out);
-		//		ir->print(std::cout);
-		delete ir;
 
+		if (config.contains("-emit-llvm")) {
+			std::ofstream out("test.ll", std::ios::out);
+			if (out.fail())
+				throw std::runtime_error("Cannot open file test.ll");
+			ir->print(out);
+			return 0;
+		}
+
+		ASM::Module asmModule;
+		ASM::Registers regs;
+		{
+			InstMake instMaker(&asmModule, &regs);
+			instMaker.visit(ir);
+		}
+		{
+			std::ofstream out("test.s", std::ios::out);
+			asmModule.print(out);
+		}
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	//		system("llc --march=riscv32 test.ll");
-	//	system("./ravel --oj-mode --input-file=test.in --output-file=test.out");
-	//	system("clang -m32 test.ll builtin.ll -o binary");
 	return 0;
 }
 
