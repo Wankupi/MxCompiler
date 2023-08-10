@@ -2,8 +2,8 @@
 .idea/
 cmake-build-debug/
 build/
-antlr4/MxLexer.tokens
-antlr4/.antlr/
+resources/antlr4/MxLexer.tokens
+resources/antlr4/.antlr/
 **test**
 out/
 MxAntlr/*
