@@ -81,7 +81,7 @@ void SemanticChecker::visitVarStmtNode(AstVarStmtNode *node) {
 		if (var.second) {
 			visit(var.second);
 			if (!type.assignable(var.second->valueType))
-				throw semantic_error("can't assign <" + var.second->valueType.to_string() + "> to <" + type.to_string() + ">");
+				throw semantic_error("can't assign <" + var.second->valueType.to_string_full() + "> to <" + type.to_string_full() + ">");
 		}
 		scope->add_variable(var.first, type);
 	}
@@ -94,7 +94,7 @@ void SemanticChecker::visitIfStmtNode(AstIfStmtNode *node) {
 	for (auto &s: node->ifStmts) {
 		visit(s.first);
 		if (!s.first->valueType.is_bool())
-			throw semantic_error("if condition should be bool, but get <" + s.first->valueType.to_string() + ">");
+			throw semantic_error("if condition should be bool, but get <" + s.first->valueType.to_string_full() + ">");
 		// block stmt will create a new scope
 		visit(s.second);
 	}
@@ -107,7 +107,7 @@ void SemanticChecker::visitForStmtNode(AstForStmtNode *node) {
 	if (node->cond) {
 		visit(node->cond);
 		if (!node->cond->valueType.is_bool())
-			throw semantic_error("for condition should be bool, but get <" + node->cond->valueType.to_string() + ">");
+			throw semantic_error("for condition should be bool, but get <" + node->cond->valueType.to_string_full() + ">");
 	}
 	if (node->step) visit(node->step);
 	++loopDepth;
@@ -120,7 +120,7 @@ void SemanticChecker::visitWhileStmtNode(AstWhileStmtNode *node) {
 	scope = node->scope = scope->add_sub_scope();
 	visit(node->cond);
 	if (!node->cond->valueType.is_bool())
-		throw semantic_error("while condition should be bool, but get <" + node->cond->valueType.to_string() + ">");
+		throw semantic_error("while condition should be bool, but get <" + node->cond->valueType.to_string_full() + ">");
 	++loopDepth;
 	for (auto stmt: node->body)
 		visit(stmt);
@@ -141,11 +141,11 @@ void SemanticChecker::visitReturnStmtNode(AstReturnStmtNode *node) {
 	if (node->expr) {
 		visit(node->expr);
 		if (!currentFunction->valueType.assignable(node->expr->valueType))
-			throw semantic_error("return type mismatch, need " + currentFunction->valueType.to_string() + ", but give " + node->expr->valueType.to_string());
+			throw semantic_error("return type mismatch, need " + currentFunction->valueType.to_string_full() + ", but give " + node->expr->valueType.to_string_full());
 	}
 	else {
 		if (currentFunction && currentFunction->valueType != globalScope->query_class("void"))
-			throw semantic_error("return type mismatch, need " + currentFunction->valueType.to_string() + ", but give void");
+			throw semantic_error("return type mismatch, need " + currentFunction->valueType.to_string_full() + ", but give void");
 	}
 }
 
@@ -258,26 +258,26 @@ void SemanticChecker::visitBinaryExprNode(AstBinaryExprNode *node) {
 		if (op == "==" || op == "!=") {
 			if (!vl.is_basic() || !vr.is_basic()) {
 				if (!vl.is_null() && !vr.is_null())
-					throw semantic_error("operator== on non-basic type l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+					throw semantic_error("operator== on non-basic type l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 			}
 			else if (vl != vr)
-				throw semantic_error("operator== on different basic type l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+				throw semantic_error("operator== on different basic type l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 		}
 		else {
 			if (vl != vr || !vl.is_basic() || !vr.is_basic())
-				throw semantic_error("compare l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+				throw semantic_error("compare l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 			if (vl.is_bool() || vl.is_void())
-				throw semantic_error("can't compare on l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+				throw semantic_error("can't compare on l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 		}
 		node->valueType = {globalScope->query_class("bool"), 0, true};
 	}
 	else {
 		if (!vl.is_basic() || !vr.is_basic())
-			throw semantic_error("binary operation on non-basic type, l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+			throw semantic_error("binary operation on non-basic type, l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 
 		if (vl.is_string() || vr.is_string()) {
 			if (!vl.is_string() || !vr.is_string())
-				throw semantic_error("string operation on non-string type, l = <" + vl.to_string() + ">, r = <" + vr.to_string() + ">, op = " + node->op);
+				throw semantic_error("string operation on non-string type, l = <" + vl.to_string_full() + ">, r = <" + vr.to_string_full() + ">, op = " + node->op);
 			if (node->op != "+" && node->op != "==" && node->op != "!=" && node->op != "<" && node->op != ">" && node->op != "<=" && node->op != ">=")
 				throw semantic_error("string operation not support " + node->op);
 		}
@@ -289,7 +289,7 @@ void SemanticChecker::visitBinaryExprNode(AstBinaryExprNode *node) {
 void SemanticChecker::visitTernaryExprNode(AstTernaryExprNode *node) {
 	visit(node->cond);
 	if (!node->cond->valueType.is_bool())
-		throw semantic_error("ternary condition should be bool, but get <" + node->cond->valueType.to_string() + ">");
+		throw semantic_error("ternary condition should be bool, but get <" + node->cond->valueType.to_string_full() + ">");
 	visit(node->trueExpr);
 	visit(node->falseExpr);
 	if (node->trueExpr->valueType == node->falseExpr->valueType || node->trueExpr->valueType.convertible(node->falseExpr->valueType))
@@ -305,6 +305,6 @@ void SemanticChecker::visitAssignExprNode(AstAssignExprNode *node) {
 	visit(node->lhs);
 	visit(node->rhs);
 	if (!node->lhs->valueType.assignable(node->rhs->valueType))
-		throw semantic_error("can't assign <" + node->rhs->valueType.to_string() + "> to <" + node->lhs->valueType.to_string() + ">");
+		throw semantic_error("can't assign <" + node->rhs->valueType.to_string_full() + "> to <" + node->lhs->valueType.to_string_full() + ">");
 	node->valueType = node->lhs->valueType;
 }

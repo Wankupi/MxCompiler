@@ -36,8 +36,9 @@ public:
 		if (rhs.is_null()) return dimension > 0 || !is_basic();
 		return (basicType == rhs.basicType) && dimension == rhs.dimension;
 	}
+	[[nodiscard]] std::string to_string_full() const;
 	[[nodiscard]] std::string to_string() const;
-	TypeInfo get_member(std::string const &member_name, GlobalScope *scope);
+	TypeInfo get_member(std::string const &member_name, GlobalScope *scope) const;
 	[[nodiscard]] bool is_null() const { return !basicType; }
 	[[nodiscard]] bool is_void() const;
 	[[nodiscard]] bool is_int() const;

@@ -1,13 +1,19 @@
 #include "Scope.h"
 
+std::string TypeInfo::to_string_full() const {
+	if (isConst)
+		return "const " + to_string();
+	else
+		return to_string();
+}
+
 std::string TypeInfo::to_string() const {
 	std::string ret = basicType ? basicType->to_string() : "null";
 	for (int i = 0; i < dimension; ++i) ret += "[]";
-	if (isConst) ret = "const " + ret;
 	return ret;
 }
 
-TypeInfo TypeInfo::get_member(const std::string &member_name, GlobalScope *scope) {
+TypeInfo TypeInfo::get_member(const std::string &member_name, GlobalScope *scope) const {
 	if (dimension == 0)
 		return basicType->get_member(member_name);
 	else
@@ -50,7 +56,7 @@ std::string FuncType::to_string() const {
 	for (auto &arg: args) {
 		if (!first) ret += ',';
 		first = false;
-		ret += arg.to_string();
+		ret += arg.to_string_full();
 	}
 	ret += ")";
 	return ret;
