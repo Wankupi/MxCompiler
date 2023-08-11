@@ -64,6 +64,7 @@ struct ArithmeticStmt : public Stmt {
 	Val *lhs = nullptr;
 	Val *rhs = nullptr;
 	std::string cmd;
+	// possible cmd: add, sub, mul, sdiv, srem, shl, ashr, and, or, xor
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitArithmeticStmt(this); }
 };
@@ -73,6 +74,7 @@ struct IcmpStmt : public Stmt {
 	Val *lhs = nullptr;
 	Val *rhs = nullptr;
 	std::string cmd;
+	// possible cmd: eq, ne, SltInst, sgt, sle, sge
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitIcmpStmt(this); }
 };
