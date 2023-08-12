@@ -6,7 +6,7 @@
 
 class InstMake : public IR::IRBaseVisitor {
 public:
-	InstMake(ASM::Module *asmModule, ASM::Registers *registers) : asmModule(asmModule), regs(registers) {}
+	InstMake(ASM::Module *asmModule, ASM::ValueAllocator *registers) : asmModule(asmModule), regs(registers) {}
 
 private:
 	void visitModule(IR::Module *node) override;
@@ -19,21 +19,28 @@ private:
 	void visitLoadStmt(IR::LoadStmt *node) override;
 	void visitArithmeticStmt(IR::ArithmeticStmt *node) override;
 	void visitIcmpStmt(IR::IcmpStmt *node) override;
+	void visitGetElementPtrStmt(IR::GetElementPtrStmt *node) override;
 	void visitCallStmt(IR::CallStmt *node) override;
+
+	void visitDirectBrStmt(IR::DirectBrStmt *node) override;
+	void visitCondBrStmt(IR::CondBrStmt *node) override;
+
+	void visitRetStmt(IR::RetStmt *node) override;
 
 private:
 	ASM::Module *asmModule = nullptr;
-	ASM::Registers *regs = nullptr;
+	ASM::ValueAllocator *regs = nullptr;
 
 private:
 	ASM::Function *currentFunction = nullptr;
 	ASM::Block *currentBlock = nullptr;
-	std::map<IR::BasicBlock *, std::string> blockLabel;
+	std::map<IR::BasicBlock *, ASM::Block *> block2block;
 	std::map<IR::Val *, ASM::Reg *> val2reg;
 	std::map<IR::Var *, ASM::StackVal *> ptr2stack;
 
 private:
 	ASM::Reg *getReg(IR::Val *val);
+	ASM::Val *getVal(IR::Val *val);
 	void add_inst(ASM::Instruction *inst);
 	ASM::StackVal *add_object_to_stack();
 };

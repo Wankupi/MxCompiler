@@ -28,6 +28,7 @@ void Block::print(std::ostream &os) const {
 	for (auto s: stmts) {
 		os << '\t';
 		s->print(os);
+		if (!s->comment.empty()) os << "\t\t\t; " << s->comment;
 		os << '\n';
 	}
 }
@@ -56,6 +57,22 @@ void StoreInst::print(std::ostream &os) const {
 
 void LoadInst::print(std::ostream &os) const {
 	os << "lw\t" << rd->name << ", " << (offset ? offset->to_string() : "0") << '(' << src->name << ')';
+}
+
+void JumpInst::print(std::ostream &os) const {
+	os << "j\t" << dst->label;
+}
+
+void BranchInst::print(std::ostream &os) const {
+	os << "b" << op << '\t' << rs1->name << ", " << rs2->name << ", " << dst->label;
+}
+
+void RetInst::print(std::ostream &os) const {
+	os << "ret";
+}
+
+void LiInst::print(std::ostream &os) const {
+	os << "li\t" << rd->name << ", " << imm->to_string();
 }
 
 }// namespace ASM

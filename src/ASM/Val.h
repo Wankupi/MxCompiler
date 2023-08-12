@@ -9,6 +9,9 @@ struct Val {
 
 struct Imm : public Val {
 	int val;
+	[[nodiscard]] std::string to_string() const override {
+		return std::to_string(val);
+	}
 };
 
 struct StackVal;

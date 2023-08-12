@@ -1075,11 +1075,6 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 				add_stmt(call);
 			}
 		}
-		//		auto debug_info = new CallStmt{};
-		//		debug_info->func = name2function["printInt"];
-		//		debug_info->args.push_back(&literal_zero);
-		//		add_stmt(debug_info);
-
 		return make_obj->res;
 	}
 	else {

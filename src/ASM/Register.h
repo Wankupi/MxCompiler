@@ -2,6 +2,7 @@
 #include "Val.h"
 #include <map>
 #include <stdexcept>
+#include <vector>
 
 namespace ASM {
 
@@ -19,8 +20,8 @@ struct PhysicalReg : public Reg {
 	int id = 0;
 };
 
-struct Registers {
-	Registers() {
+struct ValueAllocator {
+	ValueAllocator() {
 		for (int i = 0; i < 32; ++i)
 			regs[i].id = i;
 		name2reg["zero"] = &regs[0];
@@ -59,13 +60,25 @@ struct Registers {
 		auto reg = new VirtualReg{};
 		reg->id = virtualRegCount++;
 		reg->name = "v" + std::to_string(reg->id);
+		virtualRegs.push_back(reg);
 		return reg;
+	}
+	Imm *get_imm(int val) {
+		auto p = int2imm.find(val);
+		if (p != int2imm.end())
+			return p->second;
+		auto imm = new Imm{};
+		imm->val = val;
+		int2imm[val] = imm;
+		return imm;
 	}
 
 private:
 	PhysicalReg regs[32];
 	std::map<std::string, PhysicalReg *> name2reg;
+	std::map<int, Imm *> int2imm;
 	int virtualRegCount = 0;
+	std::vector<VirtualReg *> virtualRegs;
 };
 
 }// namespace ASM

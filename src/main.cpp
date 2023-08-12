@@ -15,6 +15,7 @@
 #include "middle/IRBuilder.h"
 
 #include "backend/InstMaker.h"
+#include "backend/RegAllocator.h"
 
 #include <fstream>
 #include <iostream>
@@ -63,20 +64,21 @@ int main(int argc, char *argv[]) {
 
 		auto ir = irBuilder.getIR();
 
-		if (config.contains("-emit-llvm")) {
+		if (config.contains("-emit-llvm") || true) {
 			std::ofstream out("test.ll", std::ios::out);
 			if (out.fail())
 				throw std::runtime_error("Cannot open file test.ll");
 			ir->print(out);
-			return 0;
+			if (config.contains("-emit-llvm")) return 0;
 		}
 
 		ASM::Module asmModule;
-		ASM::Registers regs;
+		ASM::ValueAllocator regs;
 		{
 			InstMake instMaker(&asmModule, &regs);
 			instMaker.visit(ir);
 		}
+		RegAllocator(&regs).work(&asmModule);
 		{
 			std::ofstream out("test.s", std::ios::out);
 			asmModule.print(out);
