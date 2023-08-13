@@ -41,6 +41,8 @@ private:
 private:
 	ASM::Reg *getReg(IR::Val *val);
 	ASM::Val *getVal(IR::Val *val);
+	ASM::PhysicalReg *toExpectReg(IR::Val *val, ASM::PhysicalReg *expected);
 	void add_inst(ASM::Instruction *inst);
 	ASM::StackVal *add_object_to_stack();
+	ASM::StackVal *add_object_to_stack_front();
 };

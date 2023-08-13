@@ -14,6 +14,8 @@ void InstMake::visitFunction(IR::Function *node) {
 	func->name = node->name;
 	currentFunction = func;
 
+	// TODO: add params to stack
+
 	for (auto b: node->blocks) {
 		auto block = new ASM::Block{".L-" + std::to_string(block2block.size())};
 		block2block[b] = block;
@@ -21,7 +23,10 @@ void InstMake::visitFunction(IR::Function *node) {
 	}
 	for (auto b: node->blocks)
 		visitBasicBlock(b);
-
+	if (func->max_call_arg_size >= 0) {
+		auto st = add_object_to_stack_front();
+		st->offset = 0;
+	}
 	currentFunction = nullptr;
 	asmModule->functions.push_back(func);
 }
@@ -93,7 +98,7 @@ void InstMake::visitArithmeticStmt(IR::ArithmeticStmt *node) {
 	auto inst = new ASM::BinaryInst{};
 	inst->op = op2inst.at(node->cmd);
 	inst->rs1 = getReg(node->lhs);
-	inst->rs2 = getReg(node->rhs);
+	inst->rs2 = getVal(node->rhs);
 	inst->rd = getReg(node->res);
 	add_inst(inst);
 }
@@ -101,7 +106,7 @@ void InstMake::visitArithmeticStmt(IR::ArithmeticStmt *node) {
 void InstMake::visitIcmpStmt(IR::IcmpStmt *node) {
 	auto slt = new ASM::SltInst{};
 	slt->rs1 = getReg(node->lhs);
-	slt->rs2 = getReg(node->rhs);
+	slt->rs2 = getVal(node->rhs);
 	slt->rd = getReg(node->res);
 	add_inst(slt);
 }
@@ -145,14 +150,27 @@ void InstMake::visitGetElementPtrStmt(IR::GetElementPtrStmt *node) {
 
 
 void InstMake::visitCallStmt(IR::CallStmt *node) {
+	currentFunction->max_call_arg_size = std::max(currentFunction->max_call_arg_size, int(node->args.size()));
+	for (int i = 8; i < node->args.size(); ++i) {
+		auto store = new ASM::StoreInst{};
+		store->val = getReg(node->args[i]);
+		store->dst = regs->get("sp");
+		store->offset = regs->get_imm((i - 8) * 4);
+		add_inst(store);
+	}
+	for (int i = 0; i < 8 && i < node->args.size(); ++i)
+		toExpectReg(node->args[i], regs->get(10 + i));
+
 	auto call = new ASM::CallInst{};
 	call->funcName = node->func->name;
 	add_inst(call);
 
-	auto mov = new ASM::MoveInst{};
-	mov->rs = regs->get("a0");
-	mov->rd = getReg(node->res);
-	add_inst(mov);
+	if (node->res) {
+		auto mov = new ASM::MoveInst{};
+		mov->rs = regs->get("a0");
+		mov->rd = getReg(node->res);
+		add_inst(mov);
+	}
 }
 
 void InstMake::visitDirectBrStmt(IR::DirectBrStmt *node) {
@@ -178,7 +196,7 @@ void InstMake::visitRetStmt(IR::RetStmt *node) {
 		mov->rd = regs->get("a0");
 		add_inst(mov);
 	}
-	add_inst(new ASM::RetInst{});
+	add_inst(new ASM::RetInst{currentFunction});
 }
 
 void InstMake::add_inst(ASM::Instruction *inst) {
@@ -198,7 +216,7 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 			imm = regs->get_imm(num->value);
 		else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
 			imm = regs->get_imm(cond->value ? 1 : 0);
-		else if (auto n = dynamic_cast<IR::LiteralNull *>(val))
+		else if (dynamic_cast<IR::LiteralNull *>(val) != nullptr)
 			imm = regs->get_imm(0);
 		auto li = new ASM::LiInst{reg, imm};
 		add_inst(li);
@@ -211,16 +229,37 @@ ASM::Val *InstMake::getVal(IR::Val *val) {
 		return regs->get_imm(num->value);
 	else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
 		return regs->get_imm(cond->value ? 1 : 0);
-	else if (auto n = dynamic_cast<IR::LiteralNull *>(val))
+	else if (dynamic_cast<IR::LiteralNull *>(val))
 		return regs->get_imm(0);
 	else
 		return getReg(val);
 }
 
+ASM::PhysicalReg *InstMake::toExpectReg(IR::Val *val, ASM::PhysicalReg *expected) {
+	auto v = getVal(val);
+	if (auto imm = dynamic_cast<ASM::Imm *>(v)) {
+		auto li = new ASM::LiInst{expected, imm};
+		add_inst(li);
+	}
+	else {
+		auto mv = new ASM::MoveInst{};
+		mv->rs = dynamic_cast<ASM::Reg *>(v);
+		mv->rd = expected;
+		add_inst(mv);
+	}
+	return expected;
+}
 
 ASM::StackVal *InstMake::add_object_to_stack() {
 	auto obj = new ASM::StackVal{};
-	obj->offset = -1;
+	obj->offset = -114514;
 	currentFunction->stack.push_back(obj);
+	return obj;
+}
+
+ASM::StackVal *InstMake::add_object_to_stack_front() {
+	auto obj = new ASM::StackVal{};
+	obj->offset = -114514;
+	currentFunction->stack.push_front(obj);
 	return obj;
 }

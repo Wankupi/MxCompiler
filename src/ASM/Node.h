@@ -29,7 +29,15 @@ struct Function : public Node {
 	std::string name;
 	std::list<Block *> blocks;
 
-	std::vector<StackVal *> stack;
+	std::list<StackVal *> params;
+	std::list<StackVal *> stack;
+	int max_call_arg_size = -1;// -1 means no call
+
+	[[nodiscard]] int get_total_stack() const {
+		int count = std::max(0, max_call_arg_size - 8);
+		count += static_cast<int>(stack.size());
+		return ((count * 4) + 15) / 16 * 16;
+	}
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitFunction(this); }
@@ -52,7 +60,8 @@ struct LiInst : public Instruction {
 };
 
 struct SltInst : public Instruction {
-	Reg *rd = nullptr, *rs1 = nullptr, *rs2 = nullptr;
+	Reg *rd = nullptr, *rs1 = nullptr;
+	Val *rs2 = nullptr;
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitSltInst(this); }
@@ -113,6 +122,8 @@ struct BranchInst : public Instruction {
 };
 
 struct RetInst : public Instruction {
+	explicit RetInst(Function *func) : func(func) {}
+	Function *func = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitRetInst(this); }
 };

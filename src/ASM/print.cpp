@@ -11,14 +11,16 @@ void Module::print(std::ostream &os) const {
 }
 
 void Function::print(std::ostream &os) const {
-	int count = 0;
+	int count = std::max(0, max_call_arg_size - 8);
 	for (auto sv: stack) sv->offset = 4 * count++;
-
 	os << "\t.text\n";
 	os << "\t.globl " << name << '\n';
 	// os << "\t.type " << name << ", @function\n";
 	os << name << ":\n";
-	os << "\taddi\tsp, sp, -" << stack.size() * 4 << '\n';
+	if (int sp_size = get_total_stack(); sp_size > 0)
+		os << "\taddi\tsp, sp, -" << sp_size << "\t\t; var=" << stack.size() << " call=" << std::max(max_call_arg_size - 8, 0) << '\n';
+	if (max_call_arg_size >= 0)
+		os << "\tsw\tra, " << stack.front()->offset << "(sp)\n";
 	for (auto b: blocks)
 		b->print(os);
 }
@@ -34,7 +36,9 @@ void Block::print(std::ostream &os) const {
 }
 
 void SltInst::print(std::ostream &os) const {
-	os << "slt\t" << rd->name << ", " << rs1->name << ", " << rs2->name;
+	os << "slt";
+	if (!dynamic_cast<Reg *>(rs2)) os << 'i';
+	os << '\t' << rd->name << ", " << rs1->name << ", " << rs2->to_string();
 }
 
 void BinaryInst::print(std::ostream &os) const {
@@ -68,6 +72,10 @@ void BranchInst::print(std::ostream &os) const {
 }
 
 void RetInst::print(std::ostream &os) const {
+	if (func->max_call_arg_size >= 0)
+		os << "lw ra, " << func->stack.front()->offset << "(sp)\n\t";
+	if (int sp_size = func->get_total_stack(); sp_size > 0)
+		os << "addi sp, sp, " << sp_size << "\n\t";
 	os << "ret";
 }
 
