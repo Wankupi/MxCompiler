@@ -43,18 +43,32 @@ struct Function : public Node {
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitFunction(this); }
 };
 
+struct GlobalVarInst : public Node {
+	GlobalVal *globalVal = nullptr;
+	Imm *initVal = nullptr;
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitGlobalVarInst(this); }
+};
+
 struct Module : public Node {
 	std::list<Function *> functions;
-
+	std::list<GlobalVarInst *> globalVars;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitModule(this); }
 };
 
-struct LiInst : public Instruction {
-	LiInst(Reg *rd, Imm *imm) : rd(rd), imm(imm) {}
-
+struct LuiInst : public Instruction {
 	Reg *rd = nullptr;
 	Imm *imm = nullptr;
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLuiInst(this); }
+};
+
+struct LiInst : public Instruction {
+	LiInst(Reg *rd, ImmI32 *imm) : rd(rd), imm(imm) {}
+
+	Reg *rd = nullptr;
+	ImmI32 *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLiInst(this); }
 };
@@ -62,7 +76,7 @@ struct LiInst : public Instruction {
 struct SltInst : public Instruction {
 	Reg *rd = nullptr, *rs1 = nullptr;
 	Val *rs2 = nullptr;
-
+	bool isUnsigned = false;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitSltInst(this); }
 };
@@ -74,6 +88,16 @@ struct BinaryInst : public Instruction {
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitBinaryInst(this); }
+};
+
+struct MulDivRemInst : public Instruction {
+	Reg *rd = nullptr;
+	Reg *rs1 = nullptr;
+	Reg *rs2 = nullptr;
+	std::string op;
+
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMulDivRemInst(this); }
 };
 
 struct CallInst : public Instruction {

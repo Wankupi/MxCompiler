@@ -63,11 +63,11 @@ struct ValueAllocator {
 		virtualRegs.push_back(reg);
 		return reg;
 	}
-	Imm *get_imm(int val) {
+	ImmI32 *get_imm(int val) {
 		auto p = int2imm.find(val);
 		if (p != int2imm.end())
 			return p->second;
-		auto imm = new Imm{};
+		auto imm = new ImmI32{};
 		imm->val = val;
 		int2imm[val] = imm;
 		return imm;
@@ -76,7 +76,7 @@ struct ValueAllocator {
 private:
 	PhysicalReg regs[32];
 	std::map<std::string, PhysicalReg *> name2reg;
-	std::map<int, Imm *> int2imm;
+	std::map<int, ImmI32 *> int2imm;
 	int virtualRegCount = 0;
 	std::vector<VirtualReg *> virtualRegs;
 };

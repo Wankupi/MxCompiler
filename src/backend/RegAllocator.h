@@ -8,10 +8,15 @@ struct RegAllocator : public RewriteLayer {
 
 private:
 	void visitBinaryInst(ASM::BinaryInst *inst) override;
+	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override;
+	void visitLuiInst(ASM::LuiInst *inst) override;
 	void visitLiInst(ASM::LiInst *inst) override;
 	void visitStoreInst(ASM::StoreInst *inst) override;
 	void visitLoadInst(ASM::LoadInst *inst) override;
 	void visitMoveInst(ASM::MoveInst *inst) override;
+	void visitSltInst(ASM::SltInst *inst) override;
+	void visitBranchInst(ASM::BranchInst *inst) override;
+
 private:
 	ASM::ValueAllocator *regs = nullptr;
 

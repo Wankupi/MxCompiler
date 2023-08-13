@@ -11,6 +11,7 @@ public:
 private:
 	void visitModule(IR::Module *node) override;
 	void visitFunction(IR::Function *node) override;
+	void initFunctionParams(ASM::Function *func, IR::Function *node);
 	//	void visitClass(IR::Class *node);
 	void visitBasicBlock(IR::BasicBlock *node) override;
 
@@ -27,6 +28,8 @@ private:
 
 	void visitRetStmt(IR::RetStmt *node) override;
 
+	void visitGlobalStmt(IR::GlobalStmt *node) override;
+
 private:
 	ASM::Module *asmModule = nullptr;
 	ASM::ValueAllocator *regs = nullptr;
@@ -37,6 +40,7 @@ private:
 	std::map<IR::BasicBlock *, ASM::Block *> block2block;
 	std::map<IR::Val *, ASM::Reg *> val2reg;
 	std::map<IR::Var *, ASM::StackVal *> ptr2stack;
+	std::map<IR::GlobalVar *, ASM::GlobalVal *> globalVar2globalVal;
 
 private:
 	ASM::Reg *getReg(IR::Val *val);
@@ -45,4 +49,6 @@ private:
 	void add_inst(ASM::Instruction *inst);
 	ASM::StackVal *add_object_to_stack();
 	ASM::StackVal *add_object_to_stack_front();
+	ASM::GlobalVal *add_global_val(IR::GlobalVar *ir_var);
+	ASM::Imm *getImm(IR::Val *val);
 };

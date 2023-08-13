@@ -14,10 +14,13 @@ struct Node {
 struct Instruction;
 struct Block;
 struct Function;
+struct GlobalVarInst;
 struct Module;
+struct LuiInst;
 struct LiInst;
 struct SltInst;
 struct BinaryInst;
+struct MulDivRemInst;
 struct CallInst;
 struct MoveInst;
 struct StoreInst;
@@ -30,11 +33,14 @@ struct ASMBaseVisitor {
 	virtual void visit(Node *node) { node->accept(this); }
 	virtual void visitModule(Module *module) {}
 	virtual void visitFunction(Function *function) {}
+	virtual void visitGlobalVarInst(GlobalVarInst *globalVarInst) {}
 	virtual void visitBlock(Block *block) {}
 	virtual void visitInstruction(Instruction *inst) {}
+	virtual void visitLuiInst(LuiInst *inst) {}
 	virtual void visitLiInst(LiInst *inst) {}
 	virtual void visitSltInst(SltInst *inst) {}
 	virtual void visitBinaryInst(BinaryInst *inst) {}
+	virtual void visitMulDivRemInst(MulDivRemInst *inst) {}
 	virtual void visitCallInst(CallInst *inst) {}
 	virtual void visitMoveInst(MoveInst *inst) {}
 	virtual void visitStoreInst(StoreInst *inst) {}

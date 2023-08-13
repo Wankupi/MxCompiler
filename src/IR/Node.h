@@ -32,6 +32,7 @@ struct Function : public IRNode {
 	std::vector<std::pair<Type *, std::string>> params;
 	std::vector<BasicBlock *> blocks;
 
+	std::vector<LocalVar *> paramsVar;
 	std::vector<LocalVar *> localVars;// stored for memory control
 
 	void print(std::ostream &out) const override;

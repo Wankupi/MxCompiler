@@ -1,9 +1,12 @@
 #include "InstMaker.h"
+#include <set>
 
 void InstMake::visitModule(IR::Module *module) {
 	if (!asmModule || !regs)
 		throw std::runtime_error("InstMake: asmModule or regs is nullptr");
 
+	for (auto g: module->variables)
+		visitGlobalStmt(g);
 	for (auto f: module->functions)
 		visitFunction(f);
 }
@@ -13,13 +16,11 @@ void InstMake::visitFunction(IR::Function *node) {
 	auto func = new ASM::Function{};
 	func->name = node->name;
 	currentFunction = func;
-
-	// TODO: add params to stack
-
+	initFunctionParams(func, node);
 	for (auto b: node->blocks) {
-		auto block = new ASM::Block{".L-" + std::to_string(block2block.size())};
+		auto block = new ASM::Block{".L-" + node->name + "-" + std::to_string(block2block.size())};
 		block2block[b] = block;
-		currentFunction->blocks.push_back(block);
+		func->blocks.push_back(block);
 	}
 	for (auto b: node->blocks)
 		visitBasicBlock(b);
@@ -30,6 +31,32 @@ void InstMake::visitFunction(IR::Function *node) {
 	currentFunction = nullptr;
 	asmModule->functions.push_back(func);
 }
+
+void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
+	if (node->params.empty())
+		return;
+	auto init_block = new ASM::Block{".L-" + node->name + "-init"};
+	func->blocks.push_back(init_block);
+	for (int i = 0; i < 8 && i < node->params.size(); ++i) {
+		auto p = getReg(node->paramsVar[i]);
+		auto mv = new ASM::MoveInst{};
+		mv->rs = regs->get(10 + i);
+		mv->rd = p;
+		init_block->stmts.push_back(mv);
+	}
+	for (int i = 8; i < node->params.size(); ++i) {
+		auto obj = new ASM::StackVal{};
+		func->params.push_back(obj);
+		ptr2stack[node->paramsVar[i]] = obj;
+		auto p = getReg(node->paramsVar[i]);
+		auto load = new ASM::LoadInst{};
+		load->rd = p;
+		load->src = regs->get("sp");
+		load->offset = obj->get_offset();
+		init_block->stmts.push_back(load);
+	}
+}
+
 
 void InstMake::visitBasicBlock(IR::BasicBlock *node) {
 	if (!currentFunction)
@@ -56,7 +83,16 @@ void InstMake::visitAllocaStmt(IR::AllocaStmt *node) {
 void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 	auto inst = new ASM::StoreInst{};
 	inst->val = getReg(node->value);
-	if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
+	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
+		auto gv = globalVar2globalVal[g];
+		auto lui = new ASM::LuiInst{};
+		lui->rd = regs->get("t6");
+		lui->imm = gv->get_hi();
+		add_inst(lui);
+		inst->dst = regs->get("t6");
+		inst->offset = gv->get_lo();
+	}
+	else if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
 		inst->dst = regs->get("sp");
 		inst->offset = cur->second->get_offset();
 	}
@@ -72,7 +108,16 @@ void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 void InstMake::visitLoadStmt(IR::LoadStmt *node) {
 	auto inst = new ASM::LoadInst{};
 	inst->rd = getReg(node->res);
-	if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
+	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
+		auto gv = globalVar2globalVal[g];
+		auto lui = new ASM::LuiInst{};
+		lui->rd = regs->get("t6");
+		lui->imm = gv->get_hi();
+		add_inst(lui);
+		inst->src = regs->get("t6");
+		inst->offset = gv->get_lo();
+	}
+	else if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
 		inst->src = regs->get("sp");
 		inst->offset = cur->second->get_offset();
 	}
@@ -84,31 +129,65 @@ void InstMake::visitLoadStmt(IR::LoadStmt *node) {
 }
 
 void InstMake::visitArithmeticStmt(IR::ArithmeticStmt *node) {
-	std::map<std::string, std::string> const op2inst = {
+	std::map<std::string, std::string> const op2inst_basic{
 			{"add", "add"},
 			{"sub", "sub"},
-			{"mul", "mul"},
-			{"sdiv", "div"},
-			{"srem", "rem"},
 			{"and", "and"},
 			{"or", "or"},
 			{"xor", "xor"},
 			{"shl", "sll"},
 			{"ashr", "sra"}};
-	auto inst = new ASM::BinaryInst{};
-	inst->op = op2inst.at(node->cmd);
-	inst->rs1 = getReg(node->lhs);
-	inst->rs2 = getVal(node->rhs);
-	inst->rd = getReg(node->res);
-	add_inst(inst);
+	std::map<std::string, std::string> const op2inst_mul{
+			{"mul", "mul"},
+			{"sdiv", "div"},
+			{"srem", "rem"}};
+	if (op2inst_basic.contains(node->cmd)) {
+		auto inst = new ASM::BinaryInst{};
+		inst->op = op2inst_basic.at(node->cmd);
+		inst->rs1 = getReg(node->lhs);
+		inst->rs2 = getVal(node->rhs);
+		inst->rd = getReg(node->res);
+		add_inst(inst);
+	}
+	else {
+		auto inst = new ASM::MulDivRemInst{};
+		inst->op = op2inst_mul.at(node->cmd);
+		inst->rs1 = getReg(node->lhs);
+		inst->rs2 = getReg(node->rhs);
+		inst->rd = getReg(node->res);
+		add_inst(inst);
+	}
 }
 
 void InstMake::visitIcmpStmt(IR::IcmpStmt *node) {
-	auto slt = new ASM::SltInst{};
-	slt->rs1 = getReg(node->lhs);
-	slt->rs2 = getVal(node->rhs);
-	slt->rd = getReg(node->res);
-	add_inst(slt);
+	std::set<std::string> const need_swap = {"sle", "sgt"};
+	std::set<std::string> const need_not = {"sle", "sge", "eq"};
+	ASM::Reg *res = nullptr;
+	if (node->cmd == "eq" || node->cmd == "ne") {
+		auto xor_inst = new ASM::BinaryInst{};
+		xor_inst->op = "xor";
+		xor_inst->rs1 = getReg(node->lhs);
+		xor_inst->rs2 = getVal(node->rhs);
+		res = xor_inst->rd = getReg(node->res);
+		add_inst(xor_inst);
+	}
+	else {
+		auto slt = new ASM::SltInst{};
+		auto lhs = node->lhs, rhs = node->rhs;
+		if (need_swap.contains(node->cmd))
+			std::swap(lhs, rhs);
+		slt->rs1 = getReg(lhs);
+		slt->rs2 = getVal(rhs);
+		res = slt->rd = getReg(node->res);
+		add_inst(slt);
+	}
+	if (need_not.contains(node->cmd)) {
+		auto not_inst = new ASM::SltInst{};
+		not_inst->rd = not_inst->rs1 = res;
+		not_inst->rs2 = regs->get_imm(1);
+		not_inst->isUnsigned = true;
+		add_inst(not_inst);
+	}
 }
 
 void InstMake::visitGetElementPtrStmt(IR::GetElementPtrStmt *node) {
@@ -180,7 +259,7 @@ void InstMake::visitDirectBrStmt(IR::DirectBrStmt *node) {
 
 void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
 	auto br = new ASM::BranchInst{};
-	br->op = "neq";
+	br->op = "ne";
 	br->rs1 = getReg(node->cond);
 	br->rs2 = regs->get("zero");
 	br->dst = block2block[node->trueBlock];
@@ -190,13 +269,17 @@ void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
 }
 
 void InstMake::visitRetStmt(IR::RetStmt *node) {
-	if (node->value) {
-		auto mov = new ASM::MoveInst{};
-		mov->rs = getReg(node->value);
-		mov->rd = regs->get("a0");
-		add_inst(mov);
-	}
+	if (node->value)
+		toExpectReg(node->value, regs->get("a0"));
 	add_inst(new ASM::RetInst{currentFunction});
+}
+
+void InstMake::visitGlobalStmt(IR::GlobalStmt *node) {
+	auto val = add_global_val(node->var);
+	auto var = new ASM::GlobalVarInst{};
+	var->globalVal = val;
+	var->initVal = getImm(node->value);
+	asmModule->globalVars.push_back(var);
 }
 
 void InstMake::add_inst(ASM::Instruction *inst) {
@@ -211,7 +294,7 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 	auto reg = regs->registerVirtualReg();
 	val2reg[val] = reg;
 	if (dynamic_cast<IR::Literal *>(val)) {
-		ASM::Imm *imm = nullptr;
+		ASM::ImmI32 *imm = nullptr;
 		if (auto num = dynamic_cast<IR::LiteralInt *>(val))
 			imm = regs->get_imm(num->value);
 		else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
@@ -237,7 +320,7 @@ ASM::Val *InstMake::getVal(IR::Val *val) {
 
 ASM::PhysicalReg *InstMake::toExpectReg(IR::Val *val, ASM::PhysicalReg *expected) {
 	auto v = getVal(val);
-	if (auto imm = dynamic_cast<ASM::Imm *>(v)) {
+	if (auto imm = dynamic_cast<ASM::ImmI32 *>(v)) {
 		auto li = new ASM::LiInst{expected, imm};
 		add_inst(li);
 	}
@@ -262,4 +345,21 @@ ASM::StackVal *InstMake::add_object_to_stack_front() {
 	obj->offset = -114514;
 	currentFunction->stack.push_front(obj);
 	return obj;
+}
+
+ASM::GlobalVal *InstMake::add_global_val(IR::GlobalVar *ir_var) {
+	auto val = new ASM::GlobalVal{ir_var->name};
+	globalVar2globalVal[ir_var] = val;
+	return val;
+}
+
+ASM::Imm *InstMake::getImm(IR::Val *val) {
+	if (auto num = dynamic_cast<IR::LiteralInt *>(val))
+		return regs->get_imm(num->value);
+	else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
+		return regs->get_imm(cond->value ? 1 : 0);
+	else if (dynamic_cast<IR::LiteralNull *>(val))
+		return regs->get_imm(0);
+	else
+		return nullptr;// TODO: global static string ptr
 }

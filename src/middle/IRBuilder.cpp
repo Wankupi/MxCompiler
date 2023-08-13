@@ -1,6 +1,6 @@
+#include "IRBuilder.h"
 #include "AST/AstNode.h"
 #include "IR/Type.h"
-#include "IRBuilder.h"
 
 #include <iostream>
 
@@ -124,6 +124,7 @@ void IRBuilder::init_function_params(Function *func) {
 		var_val->type = p.first;
 		var_val->name = p.second + SUFFIX;
 		name2var[var_val->name] = var_val;
+		func->paramsVar.push_back(var_val);
 
 		auto var = new PtrVar{};
 		var->type = &ptrType;

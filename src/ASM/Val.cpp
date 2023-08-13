@@ -10,3 +10,20 @@ ASM::OffsetOfStackVal *ASM::StackVal::get_offset() {
 		offsetOfStackVal = new OffsetOfStackVal{this};
 	return offsetOfStackVal;
 }
+
+std::string ASM::RelocationFunction::to_string() const {
+	return type + '(' + globalVal->name + ')';
+}
+
+ASM::RelocationFunction *ASM::GlobalVal::get_hi() {
+	if (!hi)
+		hi = new RelocationFunction{"%hi", this};
+	return hi;
+}
+
+ASM::RelocationFunction *ASM::GlobalVal::get_lo() {
+	if (!lo)
+		lo = new RelocationFunction{"%lo", this};
+	return lo;
+}
+

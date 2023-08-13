@@ -1,5 +1,5 @@
 #include "Node.h"
-
+#include <format>
 
 namespace ASM {
 
@@ -8,16 +8,23 @@ void Module::print(std::ostream &os) const {
 		f->print(os);
 		os << '\n';
 	}
+	for (auto g: globalVars) {
+		g->print(os);
+		os << '\n';
+	}
 }
 
 void Function::print(std::ostream &os) const {
 	int count = std::max(0, max_call_arg_size - 8);
 	for (auto sv: stack) sv->offset = 4 * count++;
+	count = 0;
+	auto sp_size = get_total_stack();
+	for (auto p: params) p->offset = sp_size + 4 * count++;
 	os << "\t.text\n";
 	os << "\t.globl " << name << '\n';
 	// os << "\t.type " << name << ", @function\n";
 	os << name << ":\n";
-	if (int sp_size = get_total_stack(); sp_size > 0)
+	if (sp_size > 0)
 		os << "\taddi\tsp, sp, -" << sp_size << "\t\t; var=" << stack.size() << " call=" << std::max(max_call_arg_size - 8, 0) << '\n';
 	if (max_call_arg_size >= 0)
 		os << "\tsw\tra, " << stack.front()->offset << "(sp)\n";
@@ -38,6 +45,7 @@ void Block::print(std::ostream &os) const {
 void SltInst::print(std::ostream &os) const {
 	os << "slt";
 	if (!dynamic_cast<Reg *>(rs2)) os << 'i';
+	if (isUnsigned) os << 'u';
 	os << '\t' << rd->name << ", " << rs1->name << ", " << rs2->to_string();
 }
 
@@ -45,6 +53,10 @@ void BinaryInst::print(std::ostream &os) const {
 	os << op;
 	if (!dynamic_cast<Reg *>(rs2)) os << 'i';
 	os << '\t' << rd->name << ", " << rs1->name << ", " << rs2->to_string();
+}
+
+void MulDivRemInst::print(std::ostream &os) const {
+	os << op << '\t' << rd->name << ", " << rs1->name << ", " << rs2->name;
 }
 
 void CallInst::print(std::ostream &os) const {
@@ -79,8 +91,22 @@ void RetInst::print(std::ostream &os) const {
 	os << "ret";
 }
 
+void LuiInst::print(std::ostream &os) const {
+	os << "lui\t" << rd->name << ", " << imm->to_string();
+}
+
 void LiInst::print(std::ostream &os) const {
 	os << "li\t" << rd->name << ", " << imm->to_string();
+}
+
+
+void GlobalVarInst::print(std::ostream &os) const {
+	os << std::format(R"(	.section data
+	.globl {}
+{}:
+	.word	{}
+)",
+					  globalVal->name, globalVal->name, initVal ? initVal->to_string() : "");
 }
 
 }// namespace ASM

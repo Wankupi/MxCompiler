@@ -28,11 +28,12 @@ private:
 			visit(inst);
 		currentBlock = nullptr;
 	}
-
 	void visitInstruction(ASM::Instruction *inst) override { add_inst(inst); }
+	void visitLuiInst(ASM::LuiInst *inst) override { add_inst(inst); }
 	void visitLiInst(ASM::LiInst *inst) override { add_inst(inst); }
 	void visitSltInst(ASM::SltInst *inst) override { add_inst(inst); }
 	void visitBinaryInst(ASM::BinaryInst *inst) override { add_inst(inst); }
+	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override { add_inst(inst); }
 	void visitCallInst(ASM::CallInst *inst) override { add_inst(inst); }
 	void visitMoveInst(ASM::MoveInst *inst) override { add_inst(inst); }
 	void visitStoreInst(ASM::StoreInst *inst) override { add_inst(inst); }

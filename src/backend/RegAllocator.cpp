@@ -37,6 +37,22 @@ void RegAllocator::visitBinaryInst(ASM::BinaryInst *inst) {
 		inst->rd = store_reg(v);
 }
 
+void RegAllocator::visitMulDivRemInst(ASM::MulDivRemInst *inst) {
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs1))
+		inst->rs1 = load_reg(v, regs->get("t1"));
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs2))
+		inst->rs2 = load_reg(v, regs->get("t2"));
+	add_inst(inst);
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
+		inst->rd = store_reg(v);
+}
+
+void RegAllocator::visitLuiInst(ASM::LuiInst *inst) {
+	add_inst(inst);
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
+		inst->rd = store_reg(v);
+}
+
 void RegAllocator::visitLiInst(ASM::LiInst *inst) {
 	add_inst(inst);
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
@@ -65,4 +81,22 @@ void RegAllocator::visitMoveInst(ASM::MoveInst *inst) {
 	add_inst(inst);
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
 		inst->rd = store_reg(v);
+}
+
+void RegAllocator::visitSltInst(ASM::SltInst *inst) {
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs1))
+		inst->rs1 = load_reg(v, regs->get("t1"));
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs2))
+		inst->rs2 = load_reg(v, regs->get("t2"));
+	add_inst(inst);
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
+		inst->rd = store_reg(v);
+}
+
+void RegAllocator::visitBranchInst(ASM::BranchInst *inst) {
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs1))
+		inst->rs1 = load_reg(v, regs->get("t1"));
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rs2))
+		inst->rs2 = load_reg(v, regs->get("t2"));
+	add_inst(inst);
 }
