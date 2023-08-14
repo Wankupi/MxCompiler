@@ -84,15 +84,13 @@ void BasicBlock::print(std::ostream &out) const {
 
 void StoreStmt::print(std::ostream &out) const {
 	out << "store ";
-	if (!value) out << "\033[31m%TODO\033[0m";
-	else {
-		value->print(out);
-	}
+	value->print(out);
 	out << ", ptr " << pointer->get_name();
 }
 
 void AllocaStmt::print(std::ostream &out) const {
-	out << res->get_name() << " = alloca " << type->to_string();
+	//	out << res->get_name() << " = alloca " << type->to_string();
+	out << res->get_name() << " = alloca " << res->objType->to_string();
 }
 
 void LiteralBool::print(std::ostream &out) const {

@@ -60,7 +60,9 @@ IR::GlobalVar *IR::Wrapper::create_global_var(IR::Type *type, std::string name) 
 	return var;
 }
 
-IR::Module *IR::Wrapper::create_module() {
+IR::Module *IR::Wrapper::createModule() {
 	if (module) throw std::runtime_error("module already exists");
-	return module = new Module{};
+	module = new Module{};
+	nodes.emplace_back(module);
+	return module;
 }

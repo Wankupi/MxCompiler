@@ -9,6 +9,7 @@
 namespace IR {
 
 struct Class : public IRNode {
+	explicit Class(std::string name) { type.name = std::move(name); }
 	ClassType type;
 	std::map<std::string, size_t> name2index;
 	void print(std::ostream &out) const override;
@@ -27,7 +28,9 @@ struct BasicBlock : public IRNode {
 };
 
 struct Function : public IRNode {
-	Type *type;
+	Function(Type *retType, std::string name) : type(retType), name(std::move(name)) {}
+
+	Type *type = nullptr;
 	std::string name;
 	std::vector<std::pair<Type *, std::string>> params;
 	std::vector<BasicBlock *> blocks;
@@ -40,13 +43,14 @@ struct Function : public IRNode {
 };
 
 struct AllocaStmt : public Stmt {
-	Type *type = nullptr;
-	Var *res = nullptr;
+	explicit AllocaStmt(PtrVar *res) : res(res) {}
+	PtrVar *res = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitAllocaStmt(this); }
 };
 
 struct StoreStmt : public Stmt {
+	StoreStmt(Val *value, Var *pointer) : value(value), pointer(pointer) {}
 	Val *value = nullptr;
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
@@ -54,6 +58,7 @@ struct StoreStmt : public Stmt {
 };
 
 struct LoadStmt : public Stmt {
+	LoadStmt(Var *res, Var *pointer) : res(res), pointer(pointer) {}
 	Var *res = nullptr;
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
@@ -61,20 +66,22 @@ struct LoadStmt : public Stmt {
 };
 
 struct ArithmeticStmt : public Stmt {
+	ArithmeticStmt(std::string cmd, Var *res, Val *lhs, Val *rhs) : cmd(std::move(cmd)), res(res), lhs(lhs), rhs(rhs) {}
+	std::string cmd;
 	Var *res = nullptr;
 	Val *lhs = nullptr;
 	Val *rhs = nullptr;
-	std::string cmd;
 	// possible cmd: add, sub, mul, sdiv, srem, shl, ashr, and, or, xor
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitArithmeticStmt(this); }
 };
 
 struct IcmpStmt : public Stmt {
+	IcmpStmt(std::string cmd, Var *res, Val *lhs, Val *rhs) : cmd(std::move(cmd)), res(res), lhs(lhs), rhs(rhs) {}
+	std::string cmd;
 	Var *res = nullptr;
 	Val *lhs = nullptr;
 	Val *rhs = nullptr;
-	std::string cmd;
 	// possible cmd: eq, ne, SltInst, sgt, sle, sge
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitIcmpStmt(this); }
@@ -89,6 +96,8 @@ struct RetStmt : public Stmt {
 };
 
 struct GetElementPtrStmt : public Stmt {
+	GetElementPtrStmt(std::string typeName, Var *res, Var *pointer, std::vector<Val *> indices = {})
+		: typeName(std::move(typeName)), res(res), pointer(pointer), indices(std::move(indices)) {}
 	Var *res = nullptr;
 	Var *pointer = nullptr;
 	std::string typeName;
@@ -98,6 +107,7 @@ struct GetElementPtrStmt : public Stmt {
 };
 
 struct CallStmt : public Stmt {
+	explicit CallStmt(Function *func, std::vector<Val *> args = {}, Var *res = nullptr) : func(func), args(std::move(args)), res(res) {}
 	Var *res = nullptr;
 	Function *func;
 	std::vector<Val *> args;
@@ -108,12 +118,14 @@ struct CallStmt : public Stmt {
 struct BrStmt : public Stmt {};
 
 struct DirectBrStmt : public BrStmt {
+	explicit DirectBrStmt(BasicBlock *block) : block(block) {}
 	BasicBlock *block = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitDirectBrStmt(this); }
 };
 
 struct CondBrStmt : public BrStmt {
+	CondBrStmt(Val *cond, BasicBlock *trueBlock, BasicBlock *falseBlock) : cond(cond), trueBlock(trueBlock), falseBlock(falseBlock) {}
 	Val *cond = nullptr;
 	BasicBlock *trueBlock = nullptr;
 	BasicBlock *falseBlock = nullptr;
@@ -122,6 +134,7 @@ struct CondBrStmt : public BrStmt {
 };
 
 struct PhiStmt : public Stmt {
+	explicit PhiStmt(Var *res, std::map<BasicBlock *, Val *> branches = {}) : res(res), branches(std::move(branches)) {}
 	Var *res = nullptr;
 	std::map<BasicBlock *, Val *> branches;
 	void print(std::ostream &out) const override;
@@ -134,6 +147,8 @@ struct UnreachableStmt : public Stmt {
 };
 
 struct GlobalStmt : public Stmt {
+	GlobalStmt(GlobalVar *var, Val *value) : var(var), value(value) {}
+
 	GlobalVar *var = nullptr;
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
