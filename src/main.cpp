@@ -64,12 +64,15 @@ int main(int argc, char *argv[]) {
 
 		auto ir = irBuilder.getIR();
 
-		if (config.contains("-emit-llvm") || true) {
+		if (config.contains("-emit-llvm")) {
+			ir->print(std::cout);
+			return 0;
+		}
+		else if (config.contains("-emit-llvm-file")) {
 			std::ofstream out("test.ll", std::ios::out);
 			if (out.fail())
 				throw std::runtime_error("Cannot open file test.ll");
 			ir->print(out);
-			if (config.contains("-emit-llvm")) return 0;
 		}
 
 		ASM::Module asmModule;
@@ -78,8 +81,14 @@ int main(int argc, char *argv[]) {
 			InstMake instMaker(&asmModule, &regs);
 			instMaker.visit(ir);
 		}
+		if (config.contains("-SS")) {
+			std::ofstream out("test.ss", std::ios::out);
+			asmModule.print(out);
+		}
 		RegAllocator(&regs).work(&asmModule);
-		{
+		if (config.contains("-S"))
+			asmModule.print(std::cout);
+		else if (config.contains("-S-file")) {
 			std::ofstream out("test.s", std::ios::out);
 			asmModule.print(out);
 		}

@@ -57,23 +57,36 @@ private:
 	GlobalVal *globalVal = nullptr;
 };
 
+struct GlobalPosition : public Imm {
+	friend class GlobalVal;
+	[[nodiscard]] std::string to_string() const override;
+	~GlobalPosition() override = default;
+
+private:
+	explicit GlobalPosition(GlobalVal *globalVal) : globalVal(globalVal) {}
+	GlobalVal *globalVal = nullptr;
+};
+
 struct GlobalVal : public Val {
 	explicit GlobalVal(std::string name) : name(std::move(name)) {}
 	~GlobalVal() override {
 		delete hi;
 		delete lo;
+		delete gp;
 	}
 	[[nodiscard]] std::string to_string() const override {
 		return name;
 	}
 	RelocationFunction *get_hi();
 	RelocationFunction *get_lo();
+	GlobalPosition *get_pos();
 
 public:
 	std::string name;
 
 private:
 	RelocationFunction *hi = nullptr, *lo = nullptr;
+	GlobalPosition *gp = nullptr;
 };
 
 }// namespace ASM

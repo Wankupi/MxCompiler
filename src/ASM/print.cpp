@@ -72,11 +72,13 @@ void MoveInst::print(std::ostream &os) const {
 }
 
 void StoreInst::print(std::ostream &os) const {
-	os << "sw\t" << val->name << ", " << (offset ? offset->to_string() : "0") << '(' << dst->name << ')';
+	char op = size == 4 ? 'w' : 'b';
+	os << 's' << op << '\t' << val->name << ", " << (offset ? offset->to_string() : "0") << '(' << dst->name << ')';
 }
 
 void LoadInst::print(std::ostream &os) const {
-	os << "lw\t" << rd->name << ", " << (offset ? offset->to_string() : "0") << '(' << src->name << ')';
+	char op = size == 4 ? 'w' : 'b';
+	os << 'l' << op << '\t' << rd->name << ", " << (offset ? offset->to_string() : "0") << '(' << src->name << ')';
 }
 
 void JumpInst::print(std::ostream &os) const {

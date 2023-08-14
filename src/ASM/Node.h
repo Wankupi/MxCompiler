@@ -130,15 +130,16 @@ struct MoveInst : public Instruction {
 };
 
 struct StoreInst : public Instruction {
+	int size = 4;
 	Reg *val = nullptr;
 	Reg *dst = nullptr;
 	Val *offset = nullptr;
-
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreInst(this); }
 };
 
 struct LoadInst : public Instruction {
+	int size = 4;
 	Reg *rd = nullptr;
 	Reg *src = nullptr;
 	Val *offset = nullptr;

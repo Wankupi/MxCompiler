@@ -27,3 +27,12 @@ ASM::RelocationFunction *ASM::GlobalVal::get_lo() {
 	return lo;
 }
 
+ASM::GlobalPosition *ASM::GlobalVal::get_pos() {
+	if (!gp)
+		gp = new GlobalPosition{this};
+	return gp;
+}
+
+std::string ASM::GlobalPosition::to_string() const {
+	return globalVal->name;
+}

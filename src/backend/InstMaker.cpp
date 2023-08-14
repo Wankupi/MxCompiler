@@ -85,6 +85,9 @@ void InstMake::visitAllocaStmt(IR::AllocaStmt *node) {
 
 void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 	auto inst = new ASM::StoreInst{};
+//	inst->size = node->value->type->size();
+//	if (inst->size != 1 && inst->size != 4)
+//		throw std::runtime_error("InstMake(store): <TODO: size not supported>" + node->to_string());
 	inst->val = getReg(node->value);
 	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
 		auto gv = globalVar2globalVal[g];
@@ -110,6 +113,9 @@ void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 
 void InstMake::visitLoadStmt(IR::LoadStmt *node) {
 	auto inst = new ASM::LoadInst{};
+//	inst->size = node->res->type->size();
+//	if (inst->size != 1 && inst->size != 4)
+//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
 	inst->rd = getReg(node->res);
 	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
 		auto gv = globalVar2globalVal[g];
@@ -305,7 +311,6 @@ void InstMake::visitGlobalStmt(IR::GlobalStmt *node) {
 }
 
 void InstMake::visitGlobalStringStmt(IR::GlobalStringStmt *node) {
-	std::cout << "Add <" << node->value << ">" << std::endl;
 	// TODO: use add_global_val directly
 	auto val = new ASM::GlobalVal{'"' + node->var->name + '"'};
 	globalVar2globalVal[node->var] = val;
@@ -413,8 +418,10 @@ ASM::Imm *InstMake::getImm(IR::Val *val) {
 		return regs->get_imm(cond->value ? 1 : 0);
 	else if (dynamic_cast<IR::LiteralNull *>(val))
 		return regs->get_imm(0);
+	else if (auto var = dynamic_cast<IR::StringLiteralVar *>(val))
+		return globalVar2globalVal[var]->get_pos();
 	else
-		return nullptr;// TODO: global static string ptr
+		throw std::runtime_error("InstMake: getImm: unknown val type: " + val->get_name());
 }
 
 std::pair<IR::Var *, IR::Val *> InstMake::block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src) {
