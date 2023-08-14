@@ -197,8 +197,8 @@ void GlobalStmt::print(std::ostream &out) const {
 }
 
 void GlobalStringStmt::print(std::ostream &out) const {
-	out << var->get_name() << " = private unnamed_addr constant [" << value.size() << " x i8] c\"";
-	for (auto c: value) {
+	out << var->get_name() << " = private unnamed_addr constant [" << var->value.size() << " x i8] c\"";
+	for (auto c: var->value) {
 		if (c == '\n')
 			out << "\\0A";
 		else if (c == '\\')

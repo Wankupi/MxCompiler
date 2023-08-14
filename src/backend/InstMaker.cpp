@@ -85,9 +85,9 @@ void InstMake::visitAllocaStmt(IR::AllocaStmt *node) {
 
 void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 	auto inst = new ASM::StoreInst{};
-//	inst->size = node->value->type->size();
-//	if (inst->size != 1 && inst->size != 4)
-//		throw std::runtime_error("InstMake(store): <TODO: size not supported>" + node->to_string());
+	//	inst->size = node->value->type->size();
+	//	if (inst->size != 1 && inst->size != 4)
+	//		throw std::runtime_error("InstMake(store): <TODO: size not supported>" + node->to_string());
 	inst->val = getReg(node->value);
 	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
 		auto gv = globalVar2globalVal[g];
@@ -113,9 +113,9 @@ void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 
 void InstMake::visitLoadStmt(IR::LoadStmt *node) {
 	auto inst = new ASM::LoadInst{};
-//	inst->size = node->res->type->size();
-//	if (inst->size != 1 && inst->size != 4)
-//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
+	//	inst->size = node->res->type->size();
+	//	if (inst->size != 1 && inst->size != 4)
+	//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
 	inst->rd = getReg(node->res);
 	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
 		auto gv = globalVar2globalVal[g];
@@ -316,7 +316,7 @@ void InstMake::visitGlobalStringStmt(IR::GlobalStringStmt *node) {
 	globalVar2globalVal[node->var] = val;
 	auto var = new ASM::LiteralStringInst{};
 	var->globalVal = val;
-	var->val = node->value;
+	var->val = node->var->value;
 	asmModule->literalStrings.push_back(var);
 }
 

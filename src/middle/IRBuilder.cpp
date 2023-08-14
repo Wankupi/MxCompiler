@@ -6,32 +6,23 @@
 
 using namespace IR;
 
-static VoidType voidType;
-static IntegerType boolType(1);
-static IntegerType intType(32);
-static PtrType ptrType;
-static StringType stringType;
-static LiteralInt literal_zero(0), literal_one(1), literal_minus_one(-1);
-static LiteralBool literal_true(true), literal_false(false);
-static LiteralNull literal_null;
 static const std::string empty_string{'\0'};
 
-
 Val *IRBuilder::type_to_default_value(IR::Type *type) {
-	if (type == &boolType)
-		return &literal_false;
-	else if (type == &intType)
-		return &literal_zero;
-	else if (type == &stringType)
-		return literalStr2var[empty_string];
+	if (type == env.boolType)
+		return env.literal(false);
+	else if (type == env.intType)
+		return env.literal(0);
+	else if (type == env.stringType)
+		return env.literal(empty_string);
 	else
-		return &literal_null;
+		return env.get_literal_null();
 }
 
 void IRBuilder::visitFileNode(AstFileNode *node) {
 	if (module)
 		throw std::runtime_error("IRBuilder: module already exists");
-	module = new Module{};
+	module = env.create_module();
 	init_builtin_function();
 	register_literal_str(empty_string);
 	for (auto c: node->children) {
@@ -72,7 +63,7 @@ void IRBuilder::registerFunction(AstFunctionNode *node) {
 	auto func = new Function{};
 	if (currentClass) {
 		func->name = currentClass->type.name + "." + node->name;
-		func->params.emplace_back(&ptrType, "this");
+		func->params.emplace_back(env.ptrType, "this");
 	}
 	else
 		func->name = node->name;
@@ -86,9 +77,7 @@ void IRBuilder::registerFunction(AstFunctionNode *node) {
 void IRBuilder::registerGlobalVar(AstVarStmtNode *node) {
 	auto type = toIRType(node->type);
 	for (auto &var: node->vars_unique_name) {
-		auto gv = new GlobalVar{};
-		gv->name = var.first;
-		gv->type = type;
+		auto gv = new GlobalVar{var.first, type};
 		add_global_var(gv);
 
 		auto globalStmt = new GlobalStmt{};
@@ -120,16 +109,16 @@ void IRBuilder::visitClassNode(AstClassNode *node) {
 void IRBuilder::init_function_params(Function *func) {
 	constexpr char const *const SUFFIX = ".param";
 	for (auto &p: func->params) {
-		auto var_val = new LocalVar{};
-		var_val->type = p.first;
-		var_val->name = p.second + SUFFIX;
+		//		auto var_val = new LocalVar{p.second + SUFFIX, p.first};
+		auto var_val = env.create_local_var(p.first, p.second + SUFFIX);
 		name2var[var_val->name] = var_val;
 		func->paramsVar.push_back(var_val);
 
-		auto var = new PtrVar{};
-		var->type = &ptrType;
-		var->objType = p.first;
-		var->name = p.second;
+		//		auto var = new PtrVar{};
+		//		var->type = &ptrType;
+		//		var->objType = p.first;
+		//		var->name = p.second;
+		auto var = env.create_ptr_var(p.first, p.second);
 		name2var[var->name] = var;
 
 		auto alloc = new AllocaStmt{};
@@ -146,12 +135,12 @@ void IRBuilder::init_function_params(Function *func) {
 	}
 }
 
-void add_terminals(Function *func) {
+void IRBuilder::add_terminals(Function *func) {
 	static UnreachableStmt unreachable{};
 	static RetStmt ret_void{};
-	static RetStmt ret_zero{&literal_zero};
+	static RetStmt ret_zero{env.literal(0)};
 	Stmt *to_insert = nullptr;
-	if (func->type != &voidType)
+	if (func->type != env.voidType)
 		to_insert = &unreachable;
 	else
 		to_insert = &ret_void;
@@ -177,31 +166,31 @@ void IRBuilder::visitFunctionNode(AstFunctionNode *node) {
 }
 
 IR::PrimitiveType *IRBuilder::toIRType(AstTypeNode *node) {
-	if (!node) return &voidType;
-	if (node->dimension) return &ptrType;
+	if (!node) return env.voidType;
+	if (node->dimension) return env.ptrType;
 	if (node->name == "void")
-		return &voidType;
+		return env.voidType;
 	else if (node->name == "bool")
-		return &boolType;
+		return env.boolType;
 	else if (node->name == "int")
-		return &intType;
+		return env.intType;
 	else if (node->name == "string")
-		return &stringType;
+		return env.stringType;
 	else
-		return &ptrType;// string and class is ptr
+		return env.ptrType;// string and class is ptr
 }
 
 IR::PrimitiveType *IRBuilder::toIRType(TypeInfo typeInfo) {
-	if (typeInfo.dimension) return &ptrType;
-	if (typeInfo.is_void()) return &voidType;
+	if (typeInfo.dimension) return env.ptrType;
+	if (typeInfo.is_void()) return env.voidType;
 	else if (typeInfo.is_bool())
-		return &boolType;
+		return env.boolType;
 	else if (typeInfo.is_int())
-		return &intType;
+		return env.intType;
 	else if (typeInfo.is_string())
-		return &stringType;
+		return env.stringType;
 	else
-		return &ptrType;
+		return env.ptrType;
 }
 
 void IRBuilder::visitVarStmtNode(AstVarStmtNode *node) {
@@ -213,10 +202,11 @@ void IRBuilder::visitVarStmtNode(AstVarStmtNode *node) {
 	for (auto &var: node->vars_unique_name) {
 		if (var.second)
 			visit(var.second);
-		auto def_var = new PtrVar{};
-		def_var->name = var.first;
-		def_var->type = &ptrType;
-		def_var->objType = type;
+		//		auto def_var = new PtrVar{};
+		//		def_var->name = var.first;
+		//		def_var->type = &ptrType;
+		//		def_var->objType = type;
+		auto def_var = env.create_ptr_var(type, var.first);
 		add_local_var(def_var);
 
 		auto alloc = new AllocaStmt{};
@@ -267,8 +257,8 @@ void IRBuilder::visitAtomExprNode(AstAtomExprNode *node) {
 		gep->pointer = dynamic_cast<Var *>(t);
 		if (!gep->pointer)
 			throw std::runtime_error("this is not defined");
-		gep->indices.push_back(&literal_zero);
-		gep->indices.push_back(new LiteralInt(idx));
+		gep->indices.push_back(env.literal(0));
+		gep->indices.push_back(env.literal(idx));
 		gep->typeName = "%class." + currentClass->type.name;
 		gep->res = register_annoy_ptr_var(currentClass->type.fields[idx], "$" + currentClass->type.name + "_" + name_to_find + ".");
 		add_stmt(gep);
@@ -289,11 +279,11 @@ void IRBuilder::visitAssignExprNode(AstAssignExprNode *node) {
 
 void IRBuilder::visitLiterExprNode(AstLiterExprNode *node) {
 	if (node->valueType.is_null())
-		exprResult[node] = new LiteralNull{};
+		exprResult[node] = env.get_literal_null();
 	else if (node->valueType.is_bool())
-		exprResult[node] = new LiteralBool{node->value == "true"};
+		exprResult[node] = env.literal(node->value == "true");
 	else if (node->valueType.is_int())
-		exprResult[node] = new LiteralInt{std::stoi(node->value)};
+		exprResult[node] = env.literal(std::stoi(node->value));
 	else if (node->valueType.is_string()) {
 		std::string str;
 		str.reserve(node->value.size() - 2);
@@ -354,7 +344,7 @@ void IRBuilder::visitBinaryExprNode(AstBinaryExprNode *node) {
 		arh->lhs = remove_variable_pointer(exprResult[node->lhs]);
 		arh->rhs = remove_variable_pointer(exprResult[node->rhs]);
 		arh->cmd = arth[node->op];
-		exprResult[node] = arh->res = register_annoy_var(&intType, ".arith.");
+		exprResult[node] = arh->res = register_annoy_var(env.intType, ".arith.");
 		add_stmt(arh);
 	}
 	else if (cmp.contains(node->op)) {
@@ -362,7 +352,7 @@ void IRBuilder::visitBinaryExprNode(AstBinaryExprNode *node) {
 		icmp->lhs = remove_variable_pointer(exprResult[node->lhs]);
 		icmp->rhs = remove_variable_pointer(exprResult[node->rhs]);
 		icmp->cmd = cmp[node->op];
-		exprResult[node] = icmp->res = register_annoy_var(&boolType, ".cmp.");
+		exprResult[node] = icmp->res = register_annoy_var(env.boolType, ".cmp.");
 		add_stmt(icmp);
 	}
 	else
@@ -381,7 +371,7 @@ void IRBuilder::enterStringBinaryExprNode(AstBinaryExprNode *node) {
 	};
 	visit(node->lhs);
 	visit(node->rhs);
-	auto resType = node->op == "+" ? static_cast<IR::Type *>(&stringType) : &boolType;
+	auto resType = node->op == "+" ? env.stringType : env.boolType;
 	auto call = new CallStmt{};
 	call->func = name2function[cmd[node->op]];
 	call->args.emplace_back(remove_variable_pointer(exprResult[node->lhs]));
@@ -419,8 +409,8 @@ void IRBuilder::visitMemberAccessExprNode(AstMemberAccessExprNode *node) {
 		gep->res = register_annoy_ptr_var(cls->type.fields[index], ".gep.");
 		gep->typeName = "%class." + cls->type.name;
 
-		gep->indices.push_back(&literal_zero);
-		gep->indices.push_back(new LiteralInt{index});
+		gep->indices.push_back(env.literal(0));
+		gep->indices.push_back(env.literal(index));
 
 		add_stmt(gep);
 		exprResult[node] = gep->res;
@@ -433,18 +423,20 @@ void Class::add_filed(PrimitiveType *mem_type, const std::string &mem_name) {
 }
 
 IR::LocalVar *IRBuilder::register_annoy_var(IR::Type *type, std::string const &prefix) {
-	auto var = new LocalVar{};
-	var->type = type;
-	var->name = prefix + std::to_string(annoyCounter[prefix]++);
+	//	auto var = new LocalVar{};
+	//	var->type = type;
+	//	var->name = prefix + std::to_string(annoyCounter[prefix]++);
+	auto var = env.create_local_var(type, prefix + std::to_string(annoyCounter[prefix]++));
 	add_local_var(var);
 	return var;
 }
 
 IR::PtrVar *IRBuilder::register_annoy_ptr_var(IR::Type *obj_type, std::string const &prefix) {
-	auto var = new PtrVar{};
-	var->type = &ptrType;
-	var->objType = obj_type;
-	var->name = prefix + std::to_string(annoyCounter[prefix]++);
+	//	auto var = new PtrVar{};
+	//	var->type = &ptrType;
+	//	var->objType = obj_type;
+	//	var->name = prefix + std::to_string(annoyCounter[prefix]++);
+	auto var = env.create_ptr_var(obj_type, prefix + std::to_string(annoyCounter[prefix]++));
 	add_local_var(var);
 	return var;
 }
@@ -453,178 +445,178 @@ void IRBuilder::init_builtin_function() {
 	// void @print(ptr str)
 	auto print = new Function{};
 	print->name = "print";
-	print->type = &voidType;
-	print->params.emplace_back(&stringType, "str");
+	print->type = env.voidType;
+	print->params.emplace_back(env.stringType, "str");
 	module->functions.push_back(print);
 
 	// void @println(ptr str)
 	auto println = new Function{};
 	println->name = "println";
-	println->type = &voidType;
-	println->params.emplace_back(&stringType, "str");
+	println->type = env.voidType;
+	println->params.emplace_back(env.stringType, "str");
 	module->functions.push_back(println);
 
 	// void @printInt(i32 n)
 	auto printInt = new Function{};
 	printInt->name = "printInt";
-	printInt->type = &voidType;
-	printInt->params.emplace_back(&intType, "n");
+	printInt->type = env.voidType;
+	printInt->params.emplace_back(env.intType, "n");
 	module->functions.push_back(printInt);
 
 	// void @printlnInt(i32 n)
 	auto printlnInt = new Function{};
 	printlnInt->name = "printlnInt";
-	printlnInt->type = &voidType;
-	printlnInt->params.emplace_back(&intType, "n");
+	printlnInt->type = env.voidType;
+	printlnInt->params.emplace_back(env.intType, "n");
 	module->functions.push_back(printlnInt);
 
 
 	// ptr @getString()
 	auto getString = new Function{};
 	getString->name = "getString";
-	getString->type = &stringType;
+	getString->type = env.stringType;
 	module->functions.push_back(getString);
 
 	// i32 @getInt()
 	auto getInt = new Function{};
 	getInt->name = "getInt";
-	getInt->type = &intType;
+	getInt->type = env.intType;
 	module->functions.push_back(getInt);
 
 	// ptr @toString(i32 n)
 	auto toString = new Function{};
 	toString->name = "toString";
-	toString->type = &stringType;
-	toString->params.emplace_back(&intType, "n");
+	toString->type = env.stringType;
+	toString->params.emplace_back(env.intType, "n");
 	module->functions.push_back(toString);
 
 	// i32 @.array.size(ptr array)
 	auto array_size = new Function{};
 	array_size->name = "_array.size";
-	array_size->type = &intType;
-	array_size->params.emplace_back(&ptrType, "array");
+	array_size->type = env.intType;
+	array_size->params.emplace_back(env.ptrType, "array");
 	module->functions.push_back(array_size);
 
 	// i32 @string.length(ptr str)
 	auto string_length = new Function{};
 	string_length->name = "string.length";
-	string_length->type = &intType;
-	string_length->params.emplace_back(&stringType, "str");
+	string_length->type = env.intType;
+	string_length->params.emplace_back(env.stringType, "str");
 	module->functions.push_back(string_length);
 
 	// ptr @string.substring(ptr str, i32 left, i32 right)
 	auto substring = new Function{};
 	substring->name = "string.substring";
-	substring->type = &stringType;
-	substring->params.emplace_back(&stringType, "str");
-	substring->params.emplace_back(&intType, "left");
-	substring->params.emplace_back(&intType, "right");
+	substring->type = env.stringType;
+	substring->params.emplace_back(env.stringType, "str");
+	substring->params.emplace_back(env.intType, "left");
+	substring->params.emplace_back(env.intType, "right");
 	module->functions.push_back(substring);
 
 	// i32 @string.parseInt(ptr str)
 	auto parseInt = new Function{};
 	parseInt->name = "string.parseInt";
-	parseInt->type = &intType;
-	parseInt->params.emplace_back(&stringType, "str");
+	parseInt->type = env.intType;
+	parseInt->params.emplace_back(env.stringType, "str");
 	module->functions.push_back(parseInt);
 
 	// i32 @string.ord(ptr str, i32 pos)
 	auto ord = new Function{};
 	ord->name = "string.ord";
-	ord->type = &intType;
-	ord->params.emplace_back(&stringType, "str");
-	ord->params.emplace_back(&intType, "pos");
+	ord->type = env.intType;
+	ord->params.emplace_back(env.stringType, "str");
+	ord->params.emplace_back(env.intType, "pos");
 	module->functions.push_back(ord);
 
 	// ptr @string.add(ptr str1, ptr str2)
 	auto str_add = new Function{};
 	str_add->name = "string.add";
-	str_add->type = &stringType;
-	str_add->params.emplace_back(&stringType, "lhs");
-	str_add->params.emplace_back(&stringType, "rhs");
+	str_add->type = env.stringType;
+	str_add->params.emplace_back(env.stringType, "lhs");
+	str_add->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_add);
 
 	// i1 @string.equal(ptr str1, ptr str2)
 	auto str_equal = new Function{};
 	str_equal->name = "string.equal";
-	str_equal->type = &boolType;
-	str_equal->params.emplace_back(&stringType, "lhs");
-	str_equal->params.emplace_back(&stringType, "rhs");
+	str_equal->type = env.boolType;
+	str_equal->params.emplace_back(env.stringType, "lhs");
+	str_equal->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_equal);
 
 	// i1 @string.notEqual(ptr str1, ptr str2)
 	auto str_notEqual = new Function{};
 	str_notEqual->name = "string.notEqual";
-	str_notEqual->type = &boolType;
-	str_notEqual->params.emplace_back(&stringType, "lhs");
-	str_notEqual->params.emplace_back(&stringType, "rhs");
+	str_notEqual->type = env.boolType;
+	str_notEqual->params.emplace_back(env.stringType, "lhs");
+	str_notEqual->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_notEqual);
 
 	// i1 @string.less(ptr str1, ptr str2)
 	auto str_less = new Function{};
 	str_less->name = "string.less";
-	str_less->type = &boolType;
-	str_less->params.emplace_back(&stringType, "lhs");
-	str_less->params.emplace_back(&stringType, "rhs");
+	str_less->type = env.boolType;
+	str_less->params.emplace_back(env.stringType, "lhs");
+	str_less->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_less);
 
 	// i1 @string.greater(ptr str1, ptr str2)
 	auto str_greater = new Function{};
 	str_greater->name = "string.greater";
-	str_greater->type = &boolType;
-	str_greater->params.emplace_back(&stringType, "lhs");
-	str_greater->params.emplace_back(&stringType, "rhs");
+	str_greater->type = env.boolType;
+	str_greater->params.emplace_back(env.stringType, "lhs");
+	str_greater->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_greater);
 
 	// i1 @string.lessEqual(ptr str1, ptr str2)
 	auto str_lessEqual = new Function{};
 	str_lessEqual->name = "string.lessEqual";
-	str_lessEqual->type = &boolType;
-	str_lessEqual->params.emplace_back(&stringType, "lhs");
-	str_lessEqual->params.emplace_back(&stringType, "rhs");
+	str_lessEqual->type = env.boolType;
+	str_lessEqual->params.emplace_back(env.stringType, "lhs");
+	str_lessEqual->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_lessEqual);
 
 	// i1 @string.greaterEqual(ptr str1, ptr str2)
 	auto str_greaterEqual = new Function{};
 	str_greaterEqual->name = "string.greaterEqual";
-	str_greaterEqual->type = &boolType;
-	str_greaterEqual->params.emplace_back(&stringType, "lhs");
-	str_greaterEqual->params.emplace_back(&stringType, "rhs");
+	str_greaterEqual->type = env.boolType;
+	str_greaterEqual->params.emplace_back(env.stringType, "lhs");
+	str_greaterEqual->params.emplace_back(env.stringType, "rhs");
 	module->functions.push_back(str_greaterEqual);
 
 	// ptr @malloc(i32 size)
 	auto malloc_ = new Function{};
 	malloc_->name = "malloc";
-	malloc_->type = &ptrType;
-	malloc_->params.emplace_back(&intType, "size");
+	malloc_->type = env.ptrType;
+	malloc_->params.emplace_back(env.intType, "size");
 	module->functions.push_back(malloc_);
 
 	// i32 @__array.size(ptr array)
 	auto array_size_ = new Function{};
 	array_size_->name = "__array.size";
-	array_size_->type = &intType;
-	array_size_->params.emplace_back(&ptrType, "array");
+	array_size_->type = env.intType;
+	array_size_->params.emplace_back(env.ptrType, "array");
 	module->functions.push_back(array_size_);
 
 	// ptr @__newPtrArray(i32 size)
 	auto newPtrArray = new Function{};
 	newPtrArray->name = "__newPtrArray";
-	newPtrArray->type = &ptrType;
-	newPtrArray->params.emplace_back(&intType, "size");
+	newPtrArray->type = env.ptrType;
+	newPtrArray->params.emplace_back(env.intType, "size");
 	module->functions.push_back(newPtrArray);
 
 	// ptr @__newIntArray(i32 size)
 	auto newIntArray = new Function{};
 	newIntArray->name = "__newIntArray";
-	newIntArray->type = &ptrType;
-	newIntArray->params.emplace_back(&intType, "size");
+	newIntArray->type = env.ptrType;
+	newIntArray->params.emplace_back(env.intType, "size");
 	module->functions.push_back(newIntArray);
 
 	// ptr @__newBoolArray(i32 size)
 	auto newBoolArray = new Function{};
 	newBoolArray->name = "__newBoolArray";
-	newBoolArray->type = &ptrType;
-	newBoolArray->params.emplace_back(&intType, "size");
+	newBoolArray->type = env.ptrType;
+	newBoolArray->params.emplace_back(env.intType, "size");
 	module->functions.push_back(newBoolArray);
 
 	for (auto func: module->functions)
@@ -820,10 +812,10 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	add_block(result);
 	auto phi = new PhiStmt{};
 	if (node->op == "&&")
-		phi->branches = {{calc_left, &literal_false}, {calc_right, rhs_res}};
+		phi->branches = {{calc_left, env.literal(false)}, {calc_right, rhs_res}};
 	else
-		phi->branches = {{calc_left, &literal_true}, {calc_right, rhs_res}};
-	exprResult[node] = phi->res = register_annoy_var(&boolType, ".short.");
+		phi->branches = {{calc_left, env.literal(true)}, {calc_right, rhs_res}};
+	exprResult[node] = phi->res = register_annoy_var(env.boolType, ".short.");
 	add_stmt(phi);
 }
 
@@ -834,8 +826,8 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		auto add = new ArithmeticStmt{};
 		add->cmd = node->op == "++" ? "add" : "sub";
 		add->lhs = remove_variable_pointer(exprResult[node->expr]);
-		add->rhs = &literal_one;
-		add->res = register_annoy_var(&intType, ".arith.");
+		add->rhs = env.literal(1);
+		add->res = register_annoy_var(env.intType, ".arith.");
 		auto store = new StoreStmt{};
 		store->value = add->res;
 		store->pointer = dynamic_cast<Var *>(exprResult[node->expr]);
@@ -854,9 +846,9 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		visit(node->expr);
 		auto sub = new ArithmeticStmt{};
 		sub->cmd = "sub";
-		sub->lhs = &literal_zero;
+		sub->lhs = env.literal(0);
 		sub->rhs = remove_variable_pointer(exprResult[node->expr]);
-		sub->res = register_annoy_var(&intType, ".arith.");
+		sub->res = register_annoy_var(env.intType, ".arith.");
 		add_stmt(sub);
 		exprResult[node] = sub->res;
 	}
@@ -865,8 +857,8 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		auto xor_ = new ArithmeticStmt{};
 		xor_->cmd = "xor";
 		xor_->lhs = remove_variable_pointer(exprResult[node->expr]);
-		xor_->rhs = &literal_true;
-		xor_->res = register_annoy_var(&boolType, ".arith.");
+		xor_->rhs = env.literal(true);
+		xor_->res = register_annoy_var(env.boolType, ".arith.");
 		add_stmt(xor_);
 		exprResult[node] = xor_->res;
 	}
@@ -875,8 +867,8 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		auto xor_ = new ArithmeticStmt{};
 		xor_->cmd = "xor";
 		xor_->lhs = remove_variable_pointer(exprResult[node->expr]);
-		xor_->rhs = &literal_minus_one;
-		xor_->res = register_annoy_var(&intType, ".arith.");
+		xor_->rhs = env.literal(-1);
+		xor_->res = register_annoy_var(env.intType, ".arith.");
 		add_stmt(xor_);
 	}
 	else
@@ -906,24 +898,13 @@ void IRBuilder::visitFuncCallExprNode(AstFuncCallExprNode *node) {
 	auto call = new CallStmt{};
 	call->func = p->second;
 	call->args = std::move(args);
-	call->res = (call->func->type == &voidType ? nullptr : register_annoy_var(call->func->type, ".call."));
+	call->res = (call->func->type == env.voidType ? nullptr : register_annoy_var(call->func->type, ".call."));
 	add_stmt(call);
 	exprResult[node] = call->res;
 }
 
 IR::StringLiteralVar *IRBuilder::register_literal_str(const std::string &str) {
-	auto p = literalStr2var.find(str);
-	if (p != literalStr2var.end())
-		return p->second;
-	auto var = new StringLiteralVar{};
-	var->type = &ptrType;
-	var->name = ".str-" + std::to_string(literalStr2var.size() + 1);
-	auto str_assign = new GlobalStringStmt{};
-	str_assign->var = var;
-	str_assign->value = str;
-	module->globalVars.push_back(var);
-	module->stringLiterals.push_back(str_assign);
-	return literalStr2var[str] = var;
+	return env.literal(str);
 }
 
 void IRBuilder::visitArrayAccessExprNode(AstArrayAccessExprNode *node) {
@@ -984,19 +965,20 @@ void IRBuilder::create_init_global_var_function() {
 	if (globalInitList.empty())
 		return;
 
-	auto first_sign = new GlobalVar{};
-	first_sign->name = ".global_var_inited";
-	first_sign->type = &boolType;
+	//	auto first_sign = new GlobalVar{};
+	//	first_sign->name = ".global_var_inited";
+	//	first_sign->type = &boolType;
+	auto first_sign = env.create_global_var(env.boolType, ".global_var_inited");
 	module->globalVars.push_back(first_sign);
 
 	auto first_sign_stmt = new GlobalStmt{};
 	first_sign_stmt->var = first_sign;
-	first_sign_stmt->value = &literal_false;
+	first_sign_stmt->value = env.literal(false);
 	module->variables.push_back(first_sign_stmt);
 
 	auto func = new Function{};
 	func->name = "init-global-var";
-	func->type = &voidType;
+	func->type = env.voidType;
 	func->blocks.emplace_back(new BasicBlock{"entry"});
 	currentFunction = func;
 
@@ -1012,7 +994,7 @@ void IRBuilder::create_init_global_var_function() {
 	add_block(init_block);
 	auto set_sign = new StoreStmt{};
 	set_sign->pointer = first_sign;
-	set_sign->value = &literal_true;
+	set_sign->value = env.literal(true);
 	add_stmt(set_sign);
 	for (auto &init: globalInitList) {
 		visit(init.second);
@@ -1041,13 +1023,13 @@ void IRBuilder::create_init_global_var_function() {
 
 IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, int total_dim, std::string const &base_typename, int dep) {
 	const std::map<std::string, IR::Type *> type_map = {
-			{"int", &intType},
-			{"bool", &boolType},
-			{"string", &stringType},
-			{"void", &voidType}};
+			{"int", env.intType},
+			{"bool", env.boolType},
+			{"string", env.stringType},
+			{"void", env.voidType}};
 	if (dep == array_size.size()) {
 		IR::Type *type = nullptr;
-		if (dep < total_dim) type = &ptrType;
+		if (dep < total_dim) type = env.ptrType;
 		else if (auto p = type_map.find(base_typename); p != type_map.end())
 			type = p->second;
 		else if (auto q = name2class.find(base_typename); q != name2class.end())
@@ -1057,17 +1039,17 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 
 		auto make_obj = new CallStmt{};
 		make_obj->func = name2function["malloc"];
-		make_obj->args.push_back(new LiteralInt{type->size()});
-		make_obj->res = register_annoy_var(&ptrType, ".new_obj.");
+		make_obj->args.push_back(env.literal(type->size()));
+		make_obj->res = register_annoy_var(env.ptrType, ".new_obj.");
 		add_stmt(make_obj);
 
-		if (type == &stringType) {
+		if (type == env.stringType) {
 			auto store = new StoreStmt{};
 			store->pointer = make_obj->res;
 			store->value = literalStr2var[empty_string];
 			add_stmt(store);
 		}
-		else if (type != &ptrType && type != &intType && type != &boolType) {
+		else if (type != env.ptrType && type != env.intType && type != env.boolType) {
 			auto con = name2function.find(base_typename + "." + base_typename);
 			if (con != name2function.end()) {
 				auto call = new CallStmt{};
@@ -1102,7 +1084,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		auto make_array = new CallStmt{};
 		make_array->func = name2function[functionName];
 		make_array->args.push_back(array_size[dep]);
-		make_array->res = register_annoy_var(&ptrType, ".new_array.");
+		make_array->res = register_annoy_var(env.ptrType, ".new_array.");
 		add_stmt(make_array);
 
 		if (dep + 1 == array_size.size())
@@ -1113,8 +1095,8 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		auto body_block = new BasicBlock{label + "_body"};
 		auto end_block = new BasicBlock{label + "_end"};
 
-		auto counter = register_annoy_var(&intType, ".new_for_idx.");
-		auto increased_counter = register_annoy_var(&intType, ".new_for_idx_inc.");
+		auto counter = register_annoy_var(env.intType, ".new_for_idx.");
+		auto increased_counter = register_annoy_var(env.intType, ".new_for_idx_inc.");
 
 		auto br_cond = new DirectBrStmt{};
 		br_cond->block = cond_block;
@@ -1123,12 +1105,12 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		auto current_block = currentFunction->blocks.back();
 		add_block(cond_block);
 		auto phi = new PhiStmt{};
-		phi->branches[current_block] = &literal_zero;
+		phi->branches[current_block] = env.literal(0);
 		// phi->branches will be pushed later
 		phi->res = counter;
 		add_stmt(phi);
 		auto cmp = new IcmpStmt{};
-		cmp->res = register_annoy_var(&boolType, ".new_for_cmp.");
+		cmp->res = register_annoy_var(env.boolType, ".new_for_cmp.");
 		cmp->cmd = "slt";
 		cmp->lhs = counter;
 		cmp->rhs = array_size[dep];
@@ -1142,7 +1124,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		add_block(body_block);
 		auto ptr = TransformNewToFor(array_size, total_dim, base_typename, dep + 1);
 		auto gep = new GetElementPtrStmt{};
-		gep->res = register_annoy_var(&ptrType, ".new_for_gep.");
+		gep->res = register_annoy_var(env.ptrType, ".new_for_gep.");
 		gep->pointer = make_array->res;
 		gep->typeName = gepName;
 		gep->indices.push_back(counter);
@@ -1156,7 +1138,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		auto inc = new ArithmeticStmt{};
 		inc->res = increased_counter;
 		inc->lhs = counter;
-		inc->rhs = &literal_one;
+		inc->rhs = env.literal(1);
 		inc->cmd = "add";
 		add_stmt(inc);
 

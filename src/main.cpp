@@ -21,6 +21,7 @@
 #include <iostream>
 
 AstNode *getAST(std::istream &in);
+void SemanticCheck(AST &ast, GlobalScope &globalScope);
 
 int main(int argc, char *argv[]) {
 	std::set<std::string> config;
@@ -41,28 +42,16 @@ int main(int argc, char *argv[]) {
 			ast.root = getAST(std::cin);
 
 		GlobalScope globalScope;
+		SemanticCheck(ast, globalScope);
 
-		{
-			ClassCollector classCollector(&globalScope);
-			classCollector.init_builtin_classes();
-			classCollector.visit(ast.root);
-		}
-		{
-			FunctionCollector functionCollector(&globalScope);
-			functionCollector.init_builtin_functions();
-			functionCollector.visit(ast.root);
-		}
-		{
-			SemanticChecker semanticChecker(&globalScope);
-			semanticChecker.visit(ast.root);
-		}
 		if (config.contains("-fsyntax-only"))
 			return 0;
 
-		IRBuilder irBuilder;
+		IR::Wrapper irEnvironment;
+		IRBuilder irBuilder(irEnvironment);
 		irBuilder.visit(ast.root);
 
-		auto ir = irBuilder.getIR();
+		auto ir = irEnvironment.get_module();
 
 		if (config.contains("-emit-llvm")) {
 			ir->print(std::cout);
@@ -120,4 +109,15 @@ AstNode *getAST(std::istream &in) {
 	if (!visit_result.has_value())
 		throw std::runtime_error("AST build failed");
 	return std::any_cast<AstNode *>(visit_result);
+}
+
+void SemanticCheck(AST &ast, GlobalScope &globalScope) {
+	ClassCollector classCollector(&globalScope);
+	classCollector.init_builtin_classes();
+	classCollector.visit(ast.root);
+	FunctionCollector functionCollector(&globalScope);
+	functionCollector.init_builtin_functions();
+	functionCollector.visit(ast.root);
+	SemanticChecker semanticChecker(&globalScope);
+	semanticChecker.visit(ast.root);
 }

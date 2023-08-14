@@ -141,8 +141,8 @@ struct GlobalStmt : public Stmt {
 };
 
 struct GlobalStringStmt : public Stmt {
+	explicit GlobalStringStmt(StringLiteralVar *var) : var(var) {}
 	StringLiteralVar *var = nullptr;
-	std::string value;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitGlobalStringStmt(this); }
 };

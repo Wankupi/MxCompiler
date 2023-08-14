@@ -1,11 +1,12 @@
 #pragma once
 
 #include "AST/AstBaseVisitor.h"
-#include "IR/Node.h"
+#include "IR/Wrapper.h"
 #include <stack>
 
 class IRBuilder : public AstBaseVisitor {
 private:
+	IR::Wrapper &env;
 	IR::Module *module = nullptr;
 	IR::Class *currentClass = nullptr;
 	IR::Function *currentFunction = nullptr;
@@ -29,7 +30,7 @@ private:
 	std::vector<std::pair<IR::Stmt *, AstExprNode *>> globalInitList;
 
 public:
-	IRBuilder() = default;
+	explicit IRBuilder(IR::Wrapper &wrapper) : env(wrapper) {}
 	[[nodiscard]] IR::Module *getIR() const {
 		return module;
 	}
@@ -75,8 +76,8 @@ private:
 	IR::Val *remove_variable_pointer(IR::Val *val);
 
 private:
-	static IR::PrimitiveType *toIRType(AstTypeNode *node);
-	static IR::PrimitiveType *toIRType(TypeInfo typeInfo);
+	IR::PrimitiveType *toIRType(AstTypeNode *node);
+	IR::PrimitiveType *toIRType(TypeInfo typeInfo);
 	void add_stmt(IR::Stmt *node);
 	void add_block(IR::BasicBlock *block);
 	void add_local_var(IR::LocalVar *node);
@@ -90,4 +91,5 @@ private:
 	void init_function_params(IR::Function *func);
 	void create_init_global_var_function();
 	IR::Val *type_to_default_value(IR::Type *type);
+	void add_terminals(IR::Function *func);
 };
