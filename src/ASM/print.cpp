@@ -12,6 +12,10 @@ void Module::print(std::ostream &os) const {
 		g->print(os);
 		os << '\n';
 	}
+	for (auto s: literalStrings) {
+		s->print(os);
+		os << '\n';
+	}
 }
 
 void Function::print(std::ostream &os) const {
@@ -99,6 +103,9 @@ void LiInst::print(std::ostream &os) const {
 	os << "li\t" << rd->name << ", " << imm->to_string();
 }
 
+void LaInst::print(std::ostream &os) const {
+	os << "la\t" << rd->name << ", " << globalVal->name;
+}
 
 void GlobalVarInst::print(std::ostream &os) const {
 	os << std::format(R"(	.section data
@@ -108,5 +115,33 @@ void GlobalVarInst::print(std::ostream &os) const {
 )",
 					  globalVal->name, globalVal->name, initVal ? initVal->to_string() : "");
 }
+
+void LiteralStringInst::print(std::ostream &os) const {
+	std::string trans;
+	for (auto c: val) {
+		switch (c) {
+			case '\n':
+				trans += "\\n";
+				break;
+			case '\t':
+				trans += "\\t";
+				break;
+			case '"':
+				trans += "\\\"";
+				break;
+			case 0:
+				break;
+			default:
+				trans += c;
+		}
+	}
+	os << std::format(R"(	.section rodata
+{}:
+	.asciz "{}"
+	.size {}, {}
+)",
+					  globalVal->name, trans, globalVal->name, val.size());
+}
+
 
 }// namespace ASM

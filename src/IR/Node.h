@@ -123,7 +123,7 @@ struct CondBrStmt : public BrStmt {
 
 struct PhiStmt : public Stmt {
 	Var *res = nullptr;
-	std::vector<std::pair<Val *, BasicBlock *>> branches;
+	std::map<BasicBlock *, Val *> branches;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitPhiStmt(this); }
 };

@@ -29,6 +29,7 @@ private:
 	void visitRetStmt(IR::RetStmt *node) override;
 
 	void visitGlobalStmt(IR::GlobalStmt *node) override;
+	void visitGlobalStringStmt(IR::GlobalStringStmt *node) override;
 
 private:
 	ASM::Module *asmModule = nullptr;
@@ -37,18 +38,21 @@ private:
 private:
 	ASM::Function *currentFunction = nullptr;
 	ASM::Block *currentBlock = nullptr;
+	IR::BasicBlock *currentIRBlock = nullptr;
 	std::map<IR::BasicBlock *, ASM::Block *> block2block;
 	std::map<IR::Val *, ASM::Reg *> val2reg;
 	std::map<IR::Var *, ASM::StackVal *> ptr2stack;
-	std::map<IR::GlobalVar *, ASM::GlobalVal *> globalVar2globalVal;
+	// TODO: use global var to unify global val and string literal val
+	std::map<IR::Var *, ASM::GlobalVal *> globalVar2globalVal;
 
 private:
 	ASM::Reg *getReg(IR::Val *val);
 	ASM::Val *getVal(IR::Val *val);
-	ASM::PhysicalReg *toExpectReg(IR::Val *val, ASM::PhysicalReg *expected);
+	ASM::Reg *toExpectReg(IR::Val *val, ASM::Reg *expected);
 	void add_inst(ASM::Instruction *inst);
 	ASM::StackVal *add_object_to_stack();
 	ASM::StackVal *add_object_to_stack_front();
 	ASM::GlobalVal *add_global_val(IR::GlobalVar *ir_var);
 	ASM::Imm *getImm(IR::Val *val);
+	static std::pair<IR::Var *, IR::Val *> block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src);
 };

@@ -11,6 +11,7 @@ private:
 	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override;
 	void visitLuiInst(ASM::LuiInst *inst) override;
 	void visitLiInst(ASM::LiInst *inst) override;
+	void visitLaInst(ASM::LaInst *inst) override;
 	void visitStoreInst(ASM::StoreInst *inst) override;
 	void visitLoadInst(ASM::LoadInst *inst) override;
 	void visitMoveInst(ASM::MoveInst *inst) override;

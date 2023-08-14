@@ -31,6 +31,7 @@ private:
 	void visitInstruction(ASM::Instruction *inst) override { add_inst(inst); }
 	void visitLuiInst(ASM::LuiInst *inst) override { add_inst(inst); }
 	void visitLiInst(ASM::LiInst *inst) override { add_inst(inst); }
+	void visitLaInst(ASM::LaInst *inst) override { add_inst(inst); }
 	void visitSltInst(ASM::SltInst *inst) override { add_inst(inst); }
 	void visitBinaryInst(ASM::BinaryInst *inst) override { add_inst(inst); }
 	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override { add_inst(inst); }

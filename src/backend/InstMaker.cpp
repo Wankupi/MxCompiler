@@ -5,6 +5,8 @@ void InstMake::visitModule(IR::Module *module) {
 	if (!asmModule || !regs)
 		throw std::runtime_error("InstMake: asmModule or regs is nullptr");
 
+	for (auto s: module->stringLiterals)
+		visitGlobalStringStmt(s);
 	for (auto g: module->variables)
 		visitGlobalStmt(g);
 	for (auto f: module->functions)
@@ -57,14 +59,15 @@ void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
 	}
 }
 
-
 void InstMake::visitBasicBlock(IR::BasicBlock *node) {
 	if (!currentFunction)
 		throw std::runtime_error("InstMake: currentFunction is nullptr");
 	auto block = block2block[node];
 	currentBlock = block;
+	currentIRBlock = node;
 	for (auto s: node->stmts)
 		visit(s);
+	currentIRBlock = nullptr;
 	currentBlock = nullptr;
 }
 
@@ -147,6 +150,10 @@ void InstMake::visitArithmeticStmt(IR::ArithmeticStmt *node) {
 		inst->rs1 = getReg(node->lhs);
 		inst->rs2 = getVal(node->rhs);
 		inst->rd = getReg(node->res);
+		if (node->cmd == "sub" && dynamic_cast<ASM::ImmI32 *>(inst->rs2)) {
+			inst->op = "add";
+			inst->rs2 = regs->get_imm(-dynamic_cast<ASM::ImmI32 *>(inst->rs2)->val);
+		}
 		add_inst(inst);
 	}
 	else {
@@ -227,7 +234,6 @@ void InstMake::visitGetElementPtrStmt(IR::GetElementPtrStmt *node) {
 	}
 }
 
-
 void InstMake::visitCallStmt(IR::CallStmt *node) {
 	currentFunction->max_call_arg_size = std::max(currentFunction->max_call_arg_size, int(node->args.size()));
 	for (int i = 8; i < node->args.size(); ++i) {
@@ -253,18 +259,34 @@ void InstMake::visitCallStmt(IR::CallStmt *node) {
 }
 
 void InstMake::visitDirectBrStmt(IR::DirectBrStmt *node) {
+	auto st = block_phi_val(node->block, currentIRBlock);
+	if (st.second)
+		toExpectReg(st.second, getReg(st.first));
 	auto br = new ASM::JumpInst{block2block[node->block]};
 	add_inst(br);
 }
 
 void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
+	auto trueBlock = node->trueBlock, falseBlock = node->falseBlock;
+	auto st_true = block_phi_val(trueBlock, currentIRBlock);
+	auto st_false = block_phi_val(falseBlock, currentIRBlock);
+	std::string cmd = "ne";
+	if (st_true.second && !st_false.second) {
+		cmd = "eq";
+		std::swap(st_true, st_false);
+		std::swap(trueBlock, falseBlock);
+	}
+	if (st_true.second)
+		toExpectReg(st_true.second, getReg(st_true.first));
 	auto br = new ASM::BranchInst{};
-	br->op = "ne";
+	br->op = cmd;
 	br->rs1 = getReg(node->cond);
 	br->rs2 = regs->get("zero");
-	br->dst = block2block[node->trueBlock];
+	br->dst = block2block[trueBlock];
 	add_inst(br);
-	auto j = new ASM::JumpInst{block2block[node->falseBlock]};
+	if (st_false.second)
+		toExpectReg(st_false.second, getReg(st_false.first));
+	auto j = new ASM::JumpInst{block2block[falseBlock]};
 	add_inst(j);
 }
 
@@ -280,6 +302,17 @@ void InstMake::visitGlobalStmt(IR::GlobalStmt *node) {
 	var->globalVal = val;
 	var->initVal = getImm(node->value);
 	asmModule->globalVars.push_back(var);
+}
+
+void InstMake::visitGlobalStringStmt(IR::GlobalStringStmt *node) {
+	std::cout << "Add <" << node->value << ">" << std::endl;
+	// TODO: use add_global_val directly
+	auto val = new ASM::GlobalVal{'"' + node->var->name + '"'};
+	globalVar2globalVal[node->var] = val;
+	auto var = new ASM::LiteralStringInst{};
+	var->globalVal = val;
+	var->val = node->value;
+	asmModule->literalStrings.push_back(var);
 }
 
 void InstMake::add_inst(ASM::Instruction *inst) {
@@ -304,6 +337,10 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 		auto li = new ASM::LiInst{reg, imm};
 		add_inst(li);
 	}
+	else if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
+		auto la = new ASM::LaInst{reg, globalVar2globalVal[s]};
+		add_inst(la);
+	}
 	return reg;
 }
 
@@ -318,7 +355,23 @@ ASM::Val *InstMake::getVal(IR::Val *val) {
 		return getReg(val);
 }
 
-ASM::PhysicalReg *InstMake::toExpectReg(IR::Val *val, ASM::PhysicalReg *expected) {
+ASM::Reg *InstMake::toExpectReg(IR::Val *val, ASM::Reg *expected) {
+	if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
+		auto lui = new ASM::LuiInst{};
+		lui->rd = expected;
+		lui->imm = globalVar2globalVal[s]->get_hi();
+		add_inst(lui);
+		auto add = new ASM::BinaryInst{};
+		add->op = "add";
+		add->rs1 = expected;
+		add->rs2 = globalVar2globalVal[s]->get_lo();
+		add->rd = expected;
+		add_inst(add);
+		return expected;
+		//		auto la = new ASM::LaInst{expected, globalVar2globalVal[s]};
+		//		add_inst(la);
+		//		return expected;
+	}
 	auto v = getVal(val);
 	if (auto imm = dynamic_cast<ASM::ImmI32 *>(v)) {
 		auto li = new ASM::LiInst{expected, imm};
@@ -362,4 +415,13 @@ ASM::Imm *InstMake::getImm(IR::Val *val) {
 		return regs->get_imm(0);
 	else
 		return nullptr;// TODO: global static string ptr
+}
+
+std::pair<IR::Var *, IR::Val *> InstMake::block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src) {
+	if (dst->stmts.empty()) return {};
+	auto phi = dynamic_cast<IR::PhiStmt *>(dst->stmts.front());
+	if (!phi) return {};
+	auto p = phi->branches.find(src);
+	if (p == phi->branches.end()) return {};
+	return {phi->res, p->second};
 }

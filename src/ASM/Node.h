@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <list>
 #include <string>
 #include <vector>
@@ -50,8 +51,16 @@ struct GlobalVarInst : public Node {
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitGlobalVarInst(this); }
 };
 
+struct LiteralStringInst : public Node {
+	GlobalVal *globalVal = nullptr;
+	std::string val;// val end with '\0'
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLiteralStringInst(this); }
+};
+
 struct Module : public Node {
 	std::list<Function *> functions;
+	std::list<LiteralStringInst *> literalStrings;
 	std::list<GlobalVarInst *> globalVars;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitModule(this); }
@@ -71,6 +80,14 @@ struct LiInst : public Instruction {
 	ImmI32 *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLiInst(this); }
+};
+
+struct LaInst : public Instruction {
+	LaInst(Reg *rd, GlobalVal *globalVal) : rd(rd), globalVal(globalVal) {}
+	Reg *rd = nullptr;
+	GlobalVal *globalVal = nullptr;
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLaInst(this); }
 };
 
 struct SltInst : public Instruction {

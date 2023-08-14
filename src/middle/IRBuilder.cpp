@@ -820,9 +820,9 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	add_block(result);
 	auto phi = new PhiStmt{};
 	if (node->op == "&&")
-		phi->branches = {{&literal_false, calc_left}, {rhs_res, calc_right}};
+		phi->branches = {{calc_left, &literal_false}, {calc_right, rhs_res}};
 	else
-		phi->branches = {{&literal_true, calc_left}, {rhs_res, calc_right}};
+		phi->branches = {{calc_left, &literal_true}, {calc_right, rhs_res}};
 	exprResult[node] = phi->res = register_annoy_var(&boolType, ".short.");
 	add_stmt(phi);
 }
@@ -972,8 +972,8 @@ void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 	add_block(end);
 	if (!node->valueType.is_void()) {
 		auto phi = new PhiStmt{};
-		phi->branches.emplace_back(true_res, from_true);
-		phi->branches.emplace_back(false_res, from_false);
+		phi->branches[from_true] = true_res;
+		phi->branches[from_false] = false_res;
 		phi->res = register_annoy_var(toIRType(node->valueType), ".ternary_res.");
 		add_stmt(phi);
 		exprResult[node] = phi->res;
@@ -995,7 +995,7 @@ void IRBuilder::create_init_global_var_function() {
 	module->variables.push_back(first_sign_stmt);
 
 	auto func = new Function{};
-	func->name = ".init_global_var";
+	func->name = "init-global-var";
 	func->type = &voidType;
 	func->blocks.emplace_back(new BasicBlock{"entry"});
 	currentFunction = func;
@@ -1123,7 +1123,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		auto current_block = currentFunction->blocks.back();
 		add_block(cond_block);
 		auto phi = new PhiStmt{};
-		phi->branches.emplace_back(&literal_zero, current_block);
+		phi->branches[current_block] = &literal_zero;
 		// phi->branches will be pushed later
 		phi->res = counter;
 		add_stmt(phi);
@@ -1161,7 +1161,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		add_stmt(inc);
 
 		add_stmt(br_cond);
-		phi->branches.emplace_back(increased_counter, currentFunction->blocks.back());
+		phi->branches[currentFunction->blocks.back()] = increased_counter;
 		add_block(end_block);
 
 		return make_array->res;

@@ -59,6 +59,12 @@ void RegAllocator::visitLiInst(ASM::LiInst *inst) {
 		inst->rd = store_reg(v);
 }
 
+void RegAllocator::visitLaInst(ASM::LaInst *inst) {
+	add_inst(inst);
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
+		inst->rd = store_reg(v);
+}
+
 void RegAllocator::visitStoreInst(ASM::StoreInst *inst) {
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->val))
 		inst->val = load_reg(v, regs->get("t1"));

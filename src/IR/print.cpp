@@ -176,12 +176,14 @@ void IcmpStmt::print(std::ostream &out) const {
 
 void PhiStmt::print(std::ostream &out) const {
 	out << res->get_name() << " = phi " << res->type->to_string() << " ";
+	bool first = true;
 	for (auto &val: branches) {
-		out << "[ ";
-		out << val.first->get_name();
-		out << ", %" << val.second->label << " ]";
-		if (&val != &branches.back())
+		if (!first)
 			out << ", ";
+		first = false;
+		out << "[ ";
+		out << val.second->get_name();
+		out << ", %" << val.first->label << " ]";
 	}
 }
 
