@@ -129,23 +129,42 @@ struct MoveInst : public Instruction {
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMoveInst(this); }
 };
 
-struct StoreInst : public Instruction {
+struct StoreInstBase : public Instruction {
 	int size = 4;
 	Reg *val = nullptr;
+};
+
+struct StoreOffset : public StoreInstBase {
 	Reg *dst = nullptr;
 	Val *offset = nullptr;
 	void print(std::ostream &os) const override;
-	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreInst(this); }
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreOffset(this); }
 };
 
-struct LoadInst : public Instruction {
+struct StoreSymbol : public StoreInstBase {
+	GlobalPosition *symbol = nullptr;
+	PhysicalReg *rd = nullptr;
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreSymbol(this); }
+};
+
+struct LoadInstBase : public Instruction {
 	int size = 4;
 	Reg *rd = nullptr;
+};
+
+struct LoadOffset : public LoadInstBase {
 	Reg *src = nullptr;
 	Val *offset = nullptr;
 
 	void print(std::ostream &os) const override;
-	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLoadInst(this); }
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLoadOffset(this); }
+};
+
+struct LoadSymbol : public LoadInstBase {
+	GlobalPosition *symbol = nullptr;
+	void print(std::ostream &os) const override;
+	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLoadSymbol(this); }
 };
 
 struct JumpInst : public Instruction {

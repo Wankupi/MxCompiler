@@ -32,6 +32,7 @@ void InstMake::visitFunction(IR::Function *node) {
 	}
 	currentFunction = nullptr;
 	asmModule->functions.push_back(func);
+	val2reg.clear();
 }
 
 void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
@@ -51,7 +52,7 @@ void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
 		func->params.push_back(obj);
 		ptr2stack[node->paramsVar[i]] = obj;
 		auto p = getReg(node->paramsVar[i]);
-		auto load = new ASM::LoadInst{};
+		auto load = new ASM::LoadOffset{};
 		load->rd = p;
 		load->src = regs->get("sp");
 		load->offset = obj->get_offset();
@@ -84,21 +85,23 @@ void InstMake::visitAllocaStmt(IR::AllocaStmt *node) {
 }
 
 void InstMake::visitStoreStmt(IR::StoreStmt *node) {
-	auto inst = new ASM::StoreInst{};
-	//	inst->size = node->value->type->size();
+	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
+		auto gv = globalVar2globalVal[g];
+		auto st = new ASM::StoreSymbol{};
+		st->size = node->value->type->size();
+		st->val = getReg(node->value);
+		st->symbol = gv->get_pos();
+		st->rd = regs->get("t6");
+		add_inst(st);
+		st->comment = node->to_string();
+		return;
+	}
+	auto inst = new ASM::StoreOffset{};
+	inst->size = node->value->type->size();
 	//	if (inst->size != 1 && inst->size != 4)
 	//		throw std::runtime_error("InstMake(store): <TODO: size not supported>" + node->to_string());
 	inst->val = getReg(node->value);
-	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
-		auto gv = globalVar2globalVal[g];
-		auto lui = new ASM::LuiInst{};
-		lui->rd = regs->get("t6");
-		lui->imm = gv->get_hi();
-		add_inst(lui);
-		inst->dst = regs->get("t6");
-		inst->offset = gv->get_lo();
-	}
-	else if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
+	if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
 		inst->dst = regs->get("sp");
 		inst->offset = cur->second->get_offset();
 	}
@@ -112,21 +115,22 @@ void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 }
 
 void InstMake::visitLoadStmt(IR::LoadStmt *node) {
-	auto inst = new ASM::LoadInst{};
-	//	inst->size = node->res->type->size();
-	//	if (inst->size != 1 && inst->size != 4)
-	//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
-	inst->rd = getReg(node->res);
 	if (auto g = dynamic_cast<IR::GlobalVar *>(node->pointer)) {
 		auto gv = globalVar2globalVal[g];
-		auto lui = new ASM::LuiInst{};
-		lui->rd = regs->get("t6");
-		lui->imm = gv->get_hi();
-		add_inst(lui);
-		inst->src = regs->get("t6");
-		inst->offset = gv->get_lo();
+		auto ld = new ASM::LoadSymbol{};
+		ld->size = node->res->type->size();
+		ld->rd = getReg(node->res);
+		ld->symbol = gv->get_pos();
+		add_inst(ld);
+		ld->comment = node->to_string();
+		return;
 	}
-	else if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
+	//	if (inst->size != 1 && inst->size != 4)
+	//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
+	auto inst = new ASM::LoadOffset{};
+	inst->size = node->res->type->size();
+	inst->rd = getReg(node->res);
+	if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
 		inst->src = regs->get("sp");
 		inst->offset = cur->second->get_offset();
 	}
@@ -217,8 +221,9 @@ void InstMake::visitGetElementPtrStmt(IR::GetElementPtrStmt *node) {
 			shl->op = "sll";
 			shl->rs1 = idx;
 			shl->rs2 = regs->get_imm(2);
-			shl->rd = idx;
+			shl->rd = regs->registerVirtualReg();
 			add_inst(shl);
+			idx = shl->rd;
 		}
 		auto add = new ASM::BinaryInst{};
 		add->op = "add";
@@ -243,7 +248,7 @@ void InstMake::visitGetElementPtrStmt(IR::GetElementPtrStmt *node) {
 void InstMake::visitCallStmt(IR::CallStmt *node) {
 	currentFunction->max_call_arg_size = std::max(currentFunction->max_call_arg_size, int(node->args.size()));
 	for (int i = 8; i < node->args.size(); ++i) {
-		auto store = new ASM::StoreInst{};
+		auto store = new ASM::StoreOffset{};
 		store->val = getReg(node->args[i]);
 		store->dst = regs->get("sp");
 		store->offset = regs->get_imm((i - 8) * 4);
@@ -330,7 +335,6 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 		return p->second;
 	}
 	auto reg = regs->registerVirtualReg();
-	val2reg[val] = reg;
 	if (dynamic_cast<IR::Literal *>(val)) {
 		ASM::ImmI32 *imm = nullptr;
 		if (auto num = dynamic_cast<IR::LiteralInt *>(val))
@@ -341,11 +345,13 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 			imm = regs->get_imm(0);
 		auto li = new ASM::LiInst{reg, imm};
 		add_inst(li);
+		return reg;
 	}
 	else if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
 		auto la = new ASM::LaInst{reg, globalVar2globalVal[s]};
 		add_inst(la);
 	}
+	val2reg[val] = reg;
 	return reg;
 }
 

@@ -12,8 +12,12 @@ private:
 	void visitLuiInst(ASM::LuiInst *inst) override;
 	void visitLiInst(ASM::LiInst *inst) override;
 	void visitLaInst(ASM::LaInst *inst) override;
-	void visitStoreInst(ASM::StoreInst *inst) override;
-	void visitLoadInst(ASM::LoadInst *inst) override;
+	void visitStoreInstBase(ASM::StoreInstBase *inst) override;
+	void visitStoreOffset(ASM::StoreOffset *inst) override;
+	void visitStoreSymbol(ASM::StoreSymbol *inst) override;
+	void visitLoadInstBase(ASM::LoadInstBase *inst) override;
+	void visitLoadOffset(ASM::LoadOffset *inst) override;
+	void visitLoadSymbol(ASM::LoadSymbol *inst) override;
 	void visitMoveInst(ASM::MoveInst *inst) override;
 	void visitSltInst(ASM::SltInst *inst) override;
 	void visitBranchInst(ASM::BranchInst *inst) override;

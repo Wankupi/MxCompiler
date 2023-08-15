@@ -24,8 +24,12 @@ struct BinaryInst;
 struct MulDivRemInst;
 struct CallInst;
 struct MoveInst;
-struct StoreInst;
-struct LoadInst;
+struct StoreInstBase;
+struct StoreOffset;
+struct StoreSymbol;
+struct LoadInstBase;
+struct LoadOffset;
+struct LoadSymbol;
 struct JumpInst;
 struct BranchInst;
 struct RetInst;
@@ -45,8 +49,12 @@ struct ASMBaseVisitor {
 	virtual void visitMulDivRemInst(MulDivRemInst *inst) {}
 	virtual void visitCallInst(CallInst *inst) {}
 	virtual void visitMoveInst(MoveInst *inst) {}
-	virtual void visitStoreInst(StoreInst *inst) {}
-	virtual void visitLoadInst(LoadInst *inst) {}
+	virtual void visitStoreInstBase(StoreInstBase *inst) {}
+	virtual void visitStoreOffset(StoreOffset *inst) {}
+	virtual void visitStoreSymbol(StoreSymbol *inst) {}
+	virtual void visitLoadInstBase(LoadInstBase *inst) {}
+	virtual void visitLoadOffset(LoadOffset *inst) {}
+	virtual void visitLoadSymbol(LoadSymbol *inst) {}
 	virtual void visitJumpInst(JumpInst *inst) {}
 	virtual void visitBranchInst(BranchInst *inst) {}
 	virtual void visitRetInst(RetInst *inst) {}

@@ -7,7 +7,7 @@ sed -n '/=== output ===/,/=== end ===/{//!p}' "$2" >test.ans
 exitCode=$(grep 'ExitCode:' "$2" | sed 's/ExitCode: //g')
 
 echo 'compile to riscv32m'
-$1 -S $2 >test.s
+$1 -emit-llvm-file -SS -S $2 >test.s
 
 echo 'run ravel'
 

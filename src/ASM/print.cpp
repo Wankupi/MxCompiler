@@ -71,14 +71,24 @@ void MoveInst::print(std::ostream &os) const {
 	os << "mv\t" << rd->name << ", " << rs->name;
 }
 
-void StoreInst::print(std::ostream &os) const {
+void StoreOffset::print(std::ostream &os) const {
 	char op = size == 4 ? 'w' : 'b';
 	os << 's' << op << '\t' << val->name << ", " << (offset ? offset->to_string() : "0") << '(' << dst->name << ')';
 }
 
-void LoadInst::print(std::ostream &os) const {
+void StoreSymbol::print(std::ostream &os) const {
+	char op = size == 4 ? 'w' : 'b';
+	os << 's' << op << '\t' << val->name << ", " << symbol->to_string() << ", " << rd->name;
+}
+
+void LoadOffset::print(std::ostream &os) const {
 	char op = size == 4 ? 'w' : 'b';
 	os << 'l' << op << '\t' << rd->name << ", " << (offset ? offset->to_string() : "0") << '(' << src->name << ')';
+}
+
+void LoadSymbol::print(std::ostream &os) const {
+	char op = size == 4 ? 'w' : 'b';
+	os << 'l' << op << '\t' << rd->name << ", " << symbol->to_string();
 }
 
 void JumpInst::print(std::ostream &os) const {
@@ -131,6 +141,8 @@ void LiteralStringInst::print(std::ostream &os) const {
 			case '"':
 				trans += "\\\"";
 				break;
+			case '\\':
+				trans += "\\\\";
 			case 0:
 				break;
 			default:
@@ -140,9 +152,8 @@ void LiteralStringInst::print(std::ostream &os) const {
 	os << std::format(R"(	.section rodata
 {}:
 	.asciz "{}"
-	.size {}, {}
 )",
-					  globalVal->name, trans, globalVal->name, val.size());
+					  globalVal->name, trans);
 }
 
 

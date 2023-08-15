@@ -37,8 +37,12 @@ private:
 	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override { add_inst(inst); }
 	void visitCallInst(ASM::CallInst *inst) override { add_inst(inst); }
 	void visitMoveInst(ASM::MoveInst *inst) override { add_inst(inst); }
-	void visitStoreInst(ASM::StoreInst *inst) override { add_inst(inst); }
-	void visitLoadInst(ASM::LoadInst *inst) override { add_inst(inst); }
+	void visitStoreInstBase(ASM::StoreInstBase *inst) override { add_inst(inst); }
+	void visitStoreOffset(ASM::StoreOffset *inst) override { add_inst(inst); }
+	void visitStoreSymbol(ASM::StoreSymbol *inst) override { add_inst(inst); }
+	void visitLoadInstBase(ASM::LoadInstBase *inst) override { add_inst(inst); }
+	void visitLoadOffset(ASM::LoadOffset *inst) override { add_inst(inst); }
+	void visitLoadSymbol(ASM::LoadSymbol *inst) override { add_inst(inst); }
 	void visitJumpInst(ASM::JumpInst *inst) override { add_inst(inst); }
 	void visitBranchInst(ASM::BranchInst *inst) override { add_inst(inst); }
 	void visitRetInst(ASM::RetInst *inst) override { add_inst(inst); }

@@ -10,7 +10,7 @@ ASM::StackVal *RegAllocator::vreg2stack(ASM::VirtualReg *reg) {
 }
 
 ASM::Reg *RegAllocator::load_reg(ASM::VirtualReg *reg, ASM::PhysicalReg *phyReg) {
-	auto load = new ASM::LoadInst{};
+	auto load = new ASM::LoadOffset{};
 	load->rd = phyReg;
 	load->src = regs->get("sp");
 	load->offset = vreg2stack(reg)->get_offset();
@@ -19,7 +19,7 @@ ASM::Reg *RegAllocator::load_reg(ASM::VirtualReg *reg, ASM::PhysicalReg *phyReg)
 }
 
 ASM::Reg *RegAllocator::store_reg(ASM::VirtualReg *reg) {
-	auto store = new ASM::StoreInst{};
+	auto store = new ASM::StoreOffset{};
 	store->val = regs->get("t0");
 	store->dst = regs->get("sp");
 	store->offset = vreg2stack(reg)->get_offset();
@@ -65,7 +65,13 @@ void RegAllocator::visitLaInst(ASM::LaInst *inst) {
 		inst->rd = store_reg(v);
 }
 
-void RegAllocator::visitStoreInst(ASM::StoreInst *inst) {
+void RegAllocator::visitStoreInstBase(ASM::StoreInstBase *inst) {
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->val))
+		inst->val = load_reg(v, regs->get("t1"));
+	add_inst(inst);
+}
+
+void RegAllocator::visitStoreOffset(ASM::StoreOffset *inst) {
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->val))
 		inst->val = load_reg(v, regs->get("t1"));
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->dst))
@@ -73,12 +79,24 @@ void RegAllocator::visitStoreInst(ASM::StoreInst *inst) {
 	add_inst(inst);
 }
 
-void RegAllocator::visitLoadInst(ASM::LoadInst *inst) {
-	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->src))
-		inst->src = load_reg(v, regs->get("t1"));
+void RegAllocator::visitStoreSymbol(ASM::StoreSymbol *inst) {
+	visitStoreInstBase(inst);
+}
+
+void RegAllocator::visitLoadInstBase(ASM::LoadInstBase *inst) {
 	add_inst(inst);
 	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->rd))
 		inst->rd = store_reg(v);
+}
+
+void RegAllocator::visitLoadOffset(ASM::LoadOffset *inst) {
+	if (auto v = dynamic_cast<ASM::VirtualReg *>(inst->src))
+		inst->src = load_reg(v, regs->get("t1"));
+	visitLoadInstBase(inst);
+}
+
+void RegAllocator::visitLoadSymbol(ASM::LoadSymbol *inst) {
+	visitLoadInstBase(inst);
 }
 
 void RegAllocator::visitMoveInst(ASM::MoveInst *inst) {
