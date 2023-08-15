@@ -48,11 +48,12 @@ private:
 private:
 	ASM::Reg *getReg(IR::Val *val);
 	ASM::Val *getVal(IR::Val *val);
+	ASM::Imm *getImm(IR::Val *val);
+	ASM::Val *tryGetImm(IR::Val *val);
 	ASM::Reg *toExpectReg(IR::Val *val, ASM::Reg *expected);
 	void add_inst(ASM::Instruction *inst);
 	ASM::StackVal *add_object_to_stack();
 	ASM::StackVal *add_object_to_stack_front();
-	ASM::GlobalVal *add_global_val(IR::GlobalVar *ir_var);
-	ASM::Imm *getImm(IR::Val *val);
+	ASM::GlobalVal *add_global_val(IR::Var *ir_var);
 	static std::pair<IR::Var *, IR::Val *> block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src);
 };

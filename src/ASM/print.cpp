@@ -116,7 +116,7 @@ void LiInst::print(std::ostream &os) const {
 }
 
 void LaInst::print(std::ostream &os) const {
-	os << "la\t" << rd->name << ", " << globalVal->name;
+	os << "la\t" << rd->name << ", " << globalVal->to_string();
 }
 
 void GlobalVarInst::print(std::ostream &os) const {

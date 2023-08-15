@@ -316,9 +316,7 @@ void InstMake::visitGlobalStmt(IR::GlobalStmt *node) {
 }
 
 void InstMake::visitGlobalStringStmt(IR::GlobalStringStmt *node) {
-	// TODO: use add_global_val directly
-	auto val = new ASM::GlobalVal{'"' + node->var->name + '"'};
-	globalVar2globalVal[node->var] = val;
+	auto val = add_global_val(node->var);
 	auto var = new ASM::LiteralStringInst{};
 	var->globalVal = val;
 	var->val = node->var->value;
@@ -329,26 +327,32 @@ void InstMake::add_inst(ASM::Instruction *inst) {
 	currentBlock->stmts.push_back(inst);
 }
 
+ASM::Val *InstMake::tryGetImm(IR::Val *val) {
+	if (auto literal = dynamic_cast<IR::Literal *>(val)) {
+		auto num = dynamic_cast<IR::LiteralInt *>(literal);
+		auto cond = dynamic_cast<IR::LiteralBool *>(literal);
+		auto null = dynamic_cast<IR::LiteralNull *>(literal);
+		if ((num && num->value == 0) || (cond && !cond->value) || null)
+			return regs->get("zero");
+		return regs->get_imm(num ? num->value : cond->value);
+	}
+	else
+		return nullptr;
+}
+
 ASM::Reg *InstMake::getReg(IR::Val *val) {
-	auto p = val2reg.find(val);
-	if (p != val2reg.end()) {
+	if (auto p = val2reg.find(val); p != val2reg.end())
 		return p->second;
+	if (auto v = tryGetImm(val)) {
+		if (auto r = dynamic_cast<ASM::Reg *>(v))
+			return r;
+		auto li = new ASM::LiInst{regs->registerVirtualReg(), dynamic_cast<ASM::ImmI32 *>(v)};
+		add_inst(li);
+		return li->rd;
 	}
 	auto reg = regs->registerVirtualReg();
-	if (dynamic_cast<IR::Literal *>(val)) {
-		ASM::ImmI32 *imm = nullptr;
-		if (auto num = dynamic_cast<IR::LiteralInt *>(val))
-			imm = regs->get_imm(num->value);
-		else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
-			imm = regs->get_imm(cond->value ? 1 : 0);
-		else if (dynamic_cast<IR::LiteralNull *>(val) != nullptr)
-			imm = regs->get_imm(0);
-		auto li = new ASM::LiInst{reg, imm};
-		add_inst(li);
-		return reg;
-	}
-	else if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
-		auto la = new ASM::LaInst{reg, globalVar2globalVal[s]};
+	if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
+		auto la = new ASM::LaInst{reg, globalVar2globalVal[s]->get_pos()};
 		add_inst(la);
 	}
 	val2reg[val] = reg;
@@ -356,32 +360,16 @@ ASM::Reg *InstMake::getReg(IR::Val *val) {
 }
 
 ASM::Val *InstMake::getVal(IR::Val *val) {
-	if (auto num = dynamic_cast<IR::LiteralInt *>(val))
-		return regs->get_imm(num->value);
-	else if (auto cond = dynamic_cast<IR::LiteralBool *>(val))
-		return regs->get_imm(cond->value ? 1 : 0);
-	else if (dynamic_cast<IR::LiteralNull *>(val))
-		return regs->get_imm(0);
-	else
-		return getReg(val);
+	auto v = tryGetImm(val);
+	if (v) return v;
+	return getReg(val);
 }
 
 ASM::Reg *InstMake::toExpectReg(IR::Val *val, ASM::Reg *expected) {
 	if (auto s = dynamic_cast<IR::StringLiteralVar *>(val)) {
-		auto lui = new ASM::LuiInst{};
-		lui->rd = expected;
-		lui->imm = globalVar2globalVal[s]->get_hi();
-		add_inst(lui);
-		auto add = new ASM::BinaryInst{};
-		add->op = "add";
-		add->rs1 = expected;
-		add->rs2 = globalVar2globalVal[s]->get_lo();
-		add->rd = expected;
-		add_inst(add);
+		auto la = new ASM::LaInst{expected, globalVar2globalVal[s]->get_pos()};
+		add_inst(la);
 		return expected;
-		//		auto la = new ASM::LaInst{expected, globalVar2globalVal[s]};
-		//		add_inst(la);
-		//		return expected;
 	}
 	auto v = getVal(val);
 	if (auto imm = dynamic_cast<ASM::ImmI32 *>(v)) {
@@ -411,7 +399,7 @@ ASM::StackVal *InstMake::add_object_to_stack_front() {
 	return obj;
 }
 
-ASM::GlobalVal *InstMake::add_global_val(IR::GlobalVar *ir_var) {
+ASM::GlobalVal *InstMake::add_global_val(IR::Var *ir_var) {
 	auto val = new ASM::GlobalVal{ir_var->name};
 	globalVar2globalVal[ir_var] = val;
 	return val;

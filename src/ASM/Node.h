@@ -83,9 +83,9 @@ struct LiInst : public Instruction {
 };
 
 struct LaInst : public Instruction {
-	LaInst(Reg *rd, GlobalVal *globalVal) : rd(rd), globalVal(globalVal) {}
+	LaInst(Reg *rd, GlobalPosition *globalVal) : rd(rd), globalVal(globalVal) {}
 	Reg *rd = nullptr;
-	GlobalVal *globalVal = nullptr;
+	GlobalPosition *globalVal = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLaInst(this); }
 };
