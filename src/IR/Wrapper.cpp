@@ -1,6 +1,10 @@
 #include "Wrapper.h"
 
 IR::Wrapper::~Wrapper() {
+	for (auto n: nodes)
+		delete n;
+	for (auto v: vars)
+		delete v;
 	delete literal_null;
 	for (auto &i: literal_ints)
 		delete i.second;
@@ -8,10 +12,11 @@ IR::Wrapper::~Wrapper() {
 	delete literal_bool[1];
 	for (auto &i: literal_strings)
 		delete i.second;
-	for (auto v: vars)
-		delete v;
-	for (auto n: nodes)
-		delete n;
+	delete voidType;
+	delete intType;
+	delete boolType;
+	delete ptrType;
+	delete stringType;
 }
 
 IR::LiteralNull *IR::Wrapper::get_literal_null() {
@@ -36,7 +41,7 @@ IR::StringLiteralVar *IR::Wrapper::get_literal_string(const std::string &value) 
 	if (!literal_strings[value]) {
 		auto var = new StringLiteralVar{".str." + std::to_string(literal_strings.size()), stringType, value};
 		literal_strings[value] = var;
-		auto *node = new GlobalStringStmt{var};
+		auto node = createGlobalStringStmt(var);
 		module->stringLiterals.push_back(node);
 	}
 	return literal_strings[value];

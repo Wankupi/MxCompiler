@@ -8,3 +8,8 @@ cmake -B build
 cmake --build build
 mkdir bin
 cp "./build/code" "./bin/mxc"
+
+clang -emit-llvm -fno-builtin-printf -fno-builtin-memcpy -fno-builtin-malloc -fno-builtin-strlen -O2 --target=riscv32 resources/builtin.c -S -o build/builtinImm.ll
+sed 's/string_/string./g;s/array_/array./g' build/builtinImm.ll >build/builtin.ll
+llc --march=riscv32 -mattr=+m,+a build/builtin.ll -o build/builtin.s
+cp build/builtin.s bin/builtin.s
