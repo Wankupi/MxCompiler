@@ -187,6 +187,14 @@ void InstMake::visitIcmpStmt(IR::IcmpStmt *node) {
 		xor_inst->rs2 = getVal(node->rhs);
 		res = xor_inst->rd = getReg(node->res);
 		add_inst(xor_inst);
+		if (node->cmd == "ne") {
+			auto slt = new ASM::SltInst{};
+			slt->rs1 = regs->get("zero");
+			slt->rs2 = res;
+			slt->isUnsigned = true;
+			slt->rd = res;
+			add_inst(slt);
+		}
 	}
 	else {
 		auto slt = new ASM::SltInst{};

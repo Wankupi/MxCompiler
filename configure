@@ -6,7 +6,7 @@ cd ..
 cd ..
 cmake -B build
 cmake --build build
-mkdir bin
+mkdir -p bin
 cp "./build/code" "./bin/mxc"
 
 clang -emit-llvm -fno-builtin-printf -fno-builtin-memcpy -fno-builtin-malloc -fno-builtin-strlen -O2 --target=riscv32 resources/builtin.c -S -o build/builtinImm.ll
