@@ -44,6 +44,7 @@ private:
 	std::map<IR::Var *, ASM::StackVal *> ptr2stack;
 	// TODO: use global var to unify global val and string literal val
 	std::map<IR::Var *, ASM::GlobalVal *> globalVar2globalVal;
+	int middle_block_count = 0;
 
 private:
 	ASM::Reg *getReg(IR::Val *val);
@@ -55,5 +56,5 @@ private:
 	ASM::StackVal *add_object_to_stack();
 	ASM::StackVal *add_object_to_stack_front();
 	ASM::GlobalVal *add_global_val(IR::Var *ir_var);
-	static std::pair<IR::Var *, IR::Val *> block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src);
+	static std::vector<std::pair<IR::Var *, IR::Val *>> block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src);
 };

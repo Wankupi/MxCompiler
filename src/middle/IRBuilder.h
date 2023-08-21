@@ -79,6 +79,7 @@ private:
 	IR::PrimitiveType *toIRType(AstTypeNode *node);
 	IR::PrimitiveType *toIRType(TypeInfo typeInfo);
 	void add_stmt(IR::Stmt *node);
+	void add_phi(IR::PhiStmt *phi);
 	void add_block(IR::BasicBlock *block);
 	void add_local_var(IR::LocalVar *node);
 	void add_global_var(IR::GlobalVar *node);

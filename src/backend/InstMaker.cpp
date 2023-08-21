@@ -66,6 +66,8 @@ void InstMake::visitBasicBlock(IR::BasicBlock *node) {
 	auto block = block2block[node];
 	currentBlock = block;
 	currentIRBlock = node;
+	for (auto [res, phi]: node->phis)
+		visitPhiStmt(phi);
 	for (auto s: node->stmts)
 		visit(s);
 	currentIRBlock = nullptr;
@@ -279,8 +281,8 @@ void InstMake::visitCallStmt(IR::CallStmt *node) {
 
 void InstMake::visitDirectBrStmt(IR::DirectBrStmt *node) {
 	auto st = block_phi_val(node->block, currentIRBlock);
-	if (st.second)
-		toExpectReg(st.second, getReg(st.first));
+	for (auto [var, val]: st)
+		toExpectReg(val, getReg(var));
 	auto br = new ASM::JumpInst{block2block[node->block]};
 	add_inst(br);
 }
@@ -290,23 +292,33 @@ void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
 	auto st_true = block_phi_val(trueBlock, currentIRBlock);
 	auto st_false = block_phi_val(falseBlock, currentIRBlock);
 	std::string cmd = "ne";
-	if (st_true.second && !st_false.second) {
+	if (!st_true.empty() && st_false.empty()) {
 		cmd = "eq";
 		std::swap(st_true, st_false);
 		std::swap(trueBlock, falseBlock);
 	}
-	if (st_true.second)
-		toExpectReg(st_true.second, getReg(st_true.first));
+	auto middle_block = st_true.empty() ? nullptr : new ASM::Block{".L_middle_" + std::to_string(++middle_block_count)};
 	auto br = new ASM::BranchInst{};
 	br->op = cmd;
 	br->rs1 = getReg(node->cond);
 	br->rs2 = regs->get("zero");
-	br->dst = block2block[trueBlock];
+	br->dst = middle_block ?: block2block[trueBlock];
 	add_inst(br);
-	if (st_false.second)
-		toExpectReg(st_false.second, getReg(st_false.first));
+	for (auto [var, val]: st_false)
+		toExpectReg(val, getReg(var));
 	auto j = new ASM::JumpInst{block2block[falseBlock]};
 	add_inst(j);
+
+	if (!st_true.empty()) {
+		auto bak = currentBlock;
+		currentBlock = middle_block;
+		for (auto [var, val]: st_true)
+			toExpectReg(val, getReg(var));
+		auto to_end = new ASM::JumpInst{block2block[trueBlock]};
+		add_inst(to_end);
+		currentBlock = bak;
+		currentFunction->blocks.push_back(middle_block);
+	}
 }
 
 void InstMake::visitRetStmt(IR::RetStmt *node) {
@@ -426,11 +438,10 @@ ASM::Imm *InstMake::getImm(IR::Val *val) {
 		throw std::runtime_error("InstMake: getImm: unknown val type: " + val->get_name());
 }
 
-std::pair<IR::Var *, IR::Val *> InstMake::block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src) {
-	if (dst->stmts.empty()) return {};
-	auto phi = dynamic_cast<IR::PhiStmt *>(dst->stmts.front());
-	if (!phi) return {};
-	auto p = phi->branches.find(src);
-	if (p == phi->branches.end()) return {};
-	return {phi->res, p->second};
+std::vector<std::pair<IR::Var *, IR::Val *>> InstMake::block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src) {
+	std::vector<std::pair<IR::Var *, IR::Val *>> ret;
+	for (auto [res, phi]: dst->phis)
+		if (auto p = phi->branches.find(src); p != phi->branches.end())
+			ret.emplace_back(res, p->second);
+	return ret;
 }

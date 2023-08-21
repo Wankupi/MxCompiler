@@ -2,6 +2,7 @@
 #include "IRBaseVisitor.h"
 #include "Type.h"
 #include "Val.h"
+#include <list>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -22,7 +23,8 @@ struct Stmt : public IRNode {};
 struct BasicBlock : public IRNode {
 	explicit BasicBlock(std::string label) : label(std::move(label)) {}
 	std::string label;
-	std::vector<Stmt *> stmts;
+	std::map<Var *, PhiStmt *> phis;
+	std::list<Stmt *> stmts;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitBasicBlock(this); }
 };

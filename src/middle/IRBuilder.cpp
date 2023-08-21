@@ -208,6 +208,10 @@ void IRBuilder::add_stmt(Stmt *node) {
 	currentFunction->blocks.back()->stmts.push_back(node);
 }
 
+void IRBuilder::add_phi(IR::PhiStmt *phi) {
+	currentFunction->blocks.back()->phis[phi->res] = phi;
+}
+
 void IRBuilder::add_local_var(IR::LocalVar *node) {
 	currentFunction->localVars.push_back(node);
 	name2var[node->name] = node;
@@ -711,7 +715,7 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	else
 		phi->branches = {{calc_left, env.literal(true)}, {calc_right, rhs_res}};
 	exprResult[node] = phi->res;
-	add_stmt(phi);
+	add_phi(phi);
 }
 
 
@@ -840,7 +844,7 @@ void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 	if (!node->valueType.is_void()) {
 		auto phi = env.createPhiStmt(register_annoy_var(toIRType(node->valueType), ".ternary_res."),
 									 std::map<BasicBlock *, Val *>{{from_true, true_res}, {from_false, false_res}});
-		add_stmt(phi);
+		add_phi(phi);
 		exprResult[node] = phi->res;
 	}
 }
@@ -969,7 +973,7 @@ IR::Var *IRBuilder::TransformNewToFor(std::vector<IR::Val *> const &array_size, 
 		add_block(cond_block);
 		auto phi = env.createPhiStmt(counter, std::map<BasicBlock *, Val *>{{current_block, env.literal(0)}});
 		// phi->branches will be pushed later
-		add_stmt(phi);
+		add_phi(phi);
 		auto cmp = env.createIcmpStmt("slt", register_annoy_var(env.boolType, ".new_for_cmp."),
 									  counter, array_size[dep]);
 		add_stmt(cmp);

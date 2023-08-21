@@ -75,6 +75,11 @@ target triple = "riscv32-unknown-unknown-elf"
 
 void BasicBlock::print(std::ostream &out) const {
 	out << label << ":\n";
+	for (auto phi: phis) {
+		out << '\t';
+		phi.second->print(out);
+		out << '\n';
+	}
 	for (auto stmt: stmts) {
 		out << '\t';
 		stmt->print(out);
