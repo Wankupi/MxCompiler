@@ -56,4 +56,22 @@ foreach (test_file ${test_files})
     set_tests_properties(${testname} PROPERTIES LABELS "asm" TIMEOUT 40)
 endforeach ()
 
+set(OptPath "${TestdataPath}/optim")
+file(GLOB_RECURSE test_files RELATIVE ${OptPath} ${OptPath}/**.mx)
+foreach (test_file ${test_files})
+    string(REGEX REPLACE ".*/" "" filename "${test_file}")
+
+    set(testname "ir-opt1|${filename}")
+    add_test(NAME ${testname}
+            COMMAND "${PROJECT_SOURCE_DIR}/run-llvm-ir.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 3)
+
+    set(testname "opt1|${filename}")
+    add_test(NAME ${testname}
+            COMMAND "${PROJECT_SOURCE_DIR}/run-riscv32m.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "opt1" TIMEOUT 40)
+endforeach ()
+
 enable_testing()

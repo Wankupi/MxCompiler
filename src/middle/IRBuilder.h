@@ -22,6 +22,7 @@ private:
 	int ifCounter = 0;
 	int continueCounter = 0;
 	int breakCounter = 0;
+	int returnCounter = 0;
 	int andOrCounter = 0;
 	int ternaryCounter = 0;
 	int newCounter = 0;

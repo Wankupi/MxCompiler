@@ -555,6 +555,8 @@ void IRBuilder::visitReturnStmtNode(AstReturnStmtNode *node) {
 		ret->value = remove_variable_pointer(exprResult[node->expr]);
 	}
 	add_stmt(ret);
+	auto block = env.createBasicBlock("after_return_" + std::to_string(++returnCounter));
+	add_block(block);
 }
 
 void IRBuilder::visitWhileStmtNode(AstWhileStmtNode *node) {
@@ -767,6 +769,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 											 env.literal(-1));
 		xor_->res = register_annoy_var(env.intType, ".arith.");
 		add_stmt(xor_);
+		exprResult[node] = xor_->res;
 	}
 	else
 		throw std::runtime_error("unknown single expr op");
