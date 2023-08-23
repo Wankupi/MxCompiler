@@ -1,4 +1,5 @@
 #include "InstMaker.h"
+#include <queue>
 #include <set>
 
 void InstMake::visitModule(IR::Module *module) {
@@ -281,8 +282,7 @@ void InstMake::visitCallStmt(IR::CallStmt *node) {
 
 void InstMake::visitDirectBrStmt(IR::DirectBrStmt *node) {
 	auto st = block_phi_val(node->block, currentIRBlock);
-	for (auto [var, val]: st)
-		toExpectReg(val, getReg(var));
+	phi2mv(st);
 	auto br = new ASM::JumpInst{block2block[node->block]};
 	add_inst(br);
 }
@@ -304,16 +304,14 @@ void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
 	br->rs2 = regs->get("zero");
 	br->dst = middle_block ?: block2block[trueBlock];
 	add_inst(br);
-	for (auto [var, val]: st_false)
-		toExpectReg(val, getReg(var));
+	phi2mv(st_false);
 	auto j = new ASM::JumpInst{block2block[falseBlock]};
 	add_inst(j);
 
 	if (!st_true.empty()) {
 		auto bak = currentBlock;
 		currentBlock = middle_block;
-		for (auto [var, val]: st_true)
-			toExpectReg(val, getReg(var));
+		phi2mv(st_true);
 		auto to_end = new ASM::JumpInst{block2block[trueBlock]};
 		add_inst(to_end);
 		currentBlock = bak;
@@ -444,4 +442,34 @@ std::vector<std::pair<IR::Var *, IR::Val *>> InstMake::block_phi_val(IR::BasicBl
 		if (auto p = phi->branches.find(src); p != phi->branches.end())
 			ret.emplace_back(res, p->second);
 	return ret;
+}
+
+void InstMake::phi2mv(const std::vector<std::pair<IR::Var *, IR::Val *>> &phis) {
+	// a <- b <- c <- d
+	// then a <- b happens first
+	std::map<IR::Val *, int> deg;
+	std::map<IR::Val *, IR::Val *> from;
+	for (auto [var, val]: phis) {
+		if (var != val)
+			deg[val]++;
+		from[var] = val;
+	}
+	std::queue<IR::Val *> q;
+	for (auto [var, val]: phis)
+		if (deg[var] == 0)
+			q.push(var);
+	int dealed = 0;
+	while (dealed < phis.size()) {
+		while (!q.empty()) {
+			auto var = q.front();
+			q.pop();
+			auto val = from[var];
+
+			toExpectReg(val, getReg(var));
+			++dealed;
+
+			if (var != val && --deg[val] == 0 && from.contains(val))
+				q.push(val);
+		}
+	}
 }

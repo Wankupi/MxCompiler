@@ -39,7 +39,6 @@ public:
 		visitBasicBlock(workBlock);
 	}
 	void set_var(Var *var, Val *val) {
-		std::cerr << "set_va(" << workBlock->label << "): " << var->name << " = " << val->to_string() << "\n";
 		def[var] = val;
 	}
 
@@ -183,7 +182,6 @@ std::pair<bool, Val *> Mem2RegFunc::need_phi(PhiStmt &phi) {
 		}
 	if (all_same && phi.res) {
 		substitute.emplace(phi.res, val);
-		std::cerr << "substitute: " << phi.res->to_string() << " -> " << val->to_string() << "\n";
 		return {true, phi.res};
 	}
 	else if (all_same)

@@ -57,4 +57,6 @@ private:
 	ASM::StackVal *add_object_to_stack_front();
 	ASM::GlobalVal *add_global_val(IR::Var *ir_var);
 	static std::vector<std::pair<IR::Var *, IR::Val *>> block_phi_val(IR::BasicBlock *dst, IR::BasicBlock *src);
+
+	void phi2mv(const std::vector<std::pair<IR::Var *, IR::Val *>> &phis);
 };

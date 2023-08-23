@@ -16,7 +16,7 @@ ravelOut=$(./ravel --oj-mode 2>&1)
 ec=$(grep 'exit code:' <<< "$ravelOut" | sed 's/exit code: //g')
 
 if [[ "$ec" -ne "$exitCode" ]]; then
-	echo 'exit code not match, should be ' "$exitCode" ' but got ' $?
+	echo 'exit code not match, should be ' "$exitCode" ' but got ' $ec
 	exit 1
 fi
 
