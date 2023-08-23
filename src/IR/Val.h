@@ -7,6 +7,11 @@ struct Val {
 
 	explicit Val(Type *type) : type(type) {}
 	virtual void print(std::ostream &out) const;
+	[[nodiscard]] std::string to_string() const {
+		std::stringstream ss;
+		print(ss);
+		return ss.str();
+	}
 	[[nodiscard]] virtual std::string get_name() const = 0;
 	virtual ~Val() = default;
 };

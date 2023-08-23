@@ -13,6 +13,7 @@
 #include "Semantic/SemanticChecker.h"
 
 #include "middle/IRBuilder.h"
+#include "middle/Mem2Reg.h"
 
 #include "backend/InstMaker.h"
 #include "backend/RegAllocator.h"
@@ -53,15 +54,17 @@ int main(int argc, char *argv[]) {
 
 		auto ir = irEnvironment.get_module();
 
-		if (config.contains("-emit-llvm")) {
-			ir->print(std::cout);
-			return 0;
-		}
-		else if (config.contains("-emit-llvm-file")) {
+		IR::Mem2Reg(irEnvironment).work();
+
+		if (config.contains("-emit-llvm-file")) {
 			std::ofstream out("test.ll", std::ios::out);
 			if (out.fail())
 				throw std::runtime_error("Cannot open file test.ll");
 			ir->print(out);
+		}
+		if (config.contains("-emit-llvm")) {
+			ir->print(std::cout);
+			return 0;
 		}
 
 		ASM::Module asmModule;

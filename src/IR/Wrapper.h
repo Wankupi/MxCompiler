@@ -23,6 +23,8 @@ public:
 	LiteralBool *literal(bool value) { return get_literal_bool(value); }
 	StringLiteralVar *literal(const std::string &value) { return get_literal_string(value); }
 
+	Val *default_value(Type *type);
+
 	LocalVar *create_local_var(Type *type, std::string name);
 	PtrVar *create_ptr_var(Type *objType, std::string name);
 	GlobalVar *create_global_var(Type *type, std::string name);

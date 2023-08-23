@@ -71,3 +71,17 @@ IR::Module *IR::Wrapper::createModule() {
 	nodes.emplace_back(module);
 	return module;
 }
+
+IR::Val *IR::Wrapper::default_value(IR::Type *type) {
+	if (type == voidType)
+		return nullptr;
+	if (type == intType)
+		return get_literal_int(0);
+	if (type == boolType)
+		return get_literal_bool(false);
+	if (type == ptrType)
+		return get_literal_null();
+	if (type == stringType)
+		return get_literal_string("");
+	return get_literal_null();
+}
