@@ -3,7 +3,7 @@
 #include "ASM/Register.h"
 #include "RewriteLayer.h"
 
-struct RegAllocator : public RewriteLayer {
+struct RegAllocator : public ASM::RewriteLayer {
 	explicit RegAllocator(ASM::ValueAllocator *allocator) : regs(allocator) {}
 
 private:

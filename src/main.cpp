@@ -15,6 +15,7 @@
 #include "middle/IRBuilder.h"
 #include "middle/Mem2Reg.h"
 
+#include "backend/GraphColorRegAllocator.h"
 #include "backend/InstMaker.h"
 #include "backend/RegAllocator.h"
 
@@ -77,7 +78,7 @@ int main(int argc, char *argv[]) {
 			std::ofstream out("test.ss", std::ios::out);
 			asmModule.print(out);
 		}
-		RegAllocator(&regs).work(&asmModule);
+		GraphColorRegAllocator(&regs).work(&asmModule);
 		if (config.contains("-S"))
 			asmModule.print(std::cout);
 		else if (config.contains("-S-file")) {

@@ -8,12 +8,15 @@
 #include "ASMBaseVisitor.h"
 #include "Register.h"
 #include "Val.h"
+#include <set>
 
 namespace ASM {
 
 struct Instruction : public Node {
 	std::string comment;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitInstruction(this); }
+	virtual std::set<Reg *> getUse() const { return {}; }
+	virtual Reg *getDef() const { return nullptr; }
 };
 
 struct Block : public Node {
@@ -71,6 +74,7 @@ struct LuiInst : public Instruction {
 	Imm *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLuiInst(this); }
+	Reg *getDef() const override { return rd; }
 };
 
 struct LiInst : public Instruction {
@@ -80,6 +84,7 @@ struct LiInst : public Instruction {
 	ImmI32 *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLiInst(this); }
+	Reg *getDef() const override { return rd; }
 };
 
 struct LaInst : public Instruction {
@@ -88,6 +93,7 @@ struct LaInst : public Instruction {
 	GlobalPosition *globalVal = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLaInst(this); }
+	Reg *getDef() const override { return rd; }
 };
 
 struct SltInst : public Instruction {
@@ -96,6 +102,12 @@ struct SltInst : public Instruction {
 	bool isUnsigned = false;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitSltInst(this); }
+	std::set<Reg *> getUse() const override {
+		std::set<Reg *> ret = {rs1};
+		if (auto reg = dynamic_cast<Reg *>(rs2)) ret.insert(reg);
+		return ret;
+	}
+	Reg *getDef() const override { return rd; }
 };
 
 struct BinaryInst : public Instruction {
@@ -105,6 +117,13 @@ struct BinaryInst : public Instruction {
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitBinaryInst(this); }
+	std::set<Reg *> getUse() const override {
+		std::set<Reg *> ret;
+		if (auto reg = dynamic_cast<Reg *>(rs1)) ret.insert(reg);
+		if (auto reg = dynamic_cast<Reg *>(rs2)) ret.insert(reg);
+		return ret;
+	}
+	Reg *getDef() const override { return rd; }
 };
 
 struct MulDivRemInst : public Instruction {
@@ -115,6 +134,8 @@ struct MulDivRemInst : public Instruction {
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMulDivRemInst(this); }
+	std::set<Reg *> getUse() const override { return {rs1, rs2}; }
+	Reg *getDef() const override { return rd; }
 };
 
 struct CallInst : public Instruction {
@@ -125,20 +146,25 @@ struct CallInst : public Instruction {
 
 struct MoveInst : public Instruction {
 	Reg *rd = nullptr, *rs = nullptr;
+
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMoveInst(this); }
+	std::set<Reg *> getUse() const override { return {rs}; }
+	Reg *getDef() const override { return rd; }
 };
 
 struct StoreInstBase : public Instruction {
 	int size = 4;
 	Reg *val = nullptr;
+	Reg *getDef() const override { return nullptr; }
 };
 
 struct StoreOffset : public StoreInstBase {
 	Reg *dst = nullptr;
-	Val *offset = nullptr;
+	Imm *offset = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreOffset(this); }
+	std::set<Reg *> getUse() const override { return {val, dst}; }
 };
 
 struct StoreSymbol : public StoreInstBase {
@@ -146,19 +172,23 @@ struct StoreSymbol : public StoreInstBase {
 	PhysicalReg *rd = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreSymbol(this); }
+	std::set<Reg *> getUse() const override { return {val}; }
+	Reg *getDef() const override { return rd; }
 };
 
 struct LoadInstBase : public Instruction {
 	int size = 4;
 	Reg *rd = nullptr;
+	Reg *getDef() const override { return rd; }
 };
 
 struct LoadOffset : public LoadInstBase {
 	Reg *src = nullptr;
-	Val *offset = nullptr;
+	Imm *offset = nullptr;
 
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLoadOffset(this); }
+	std::set<Reg *> getUse() const override { return {src}; }
 };
 
 struct LoadSymbol : public LoadInstBase {
@@ -180,6 +210,7 @@ struct BranchInst : public Instruction {
 	Block *dst = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitBranchInst(this); }
+	std::set<Reg *> getUse() const override { return {rs1, rs2}; }
 };
 
 struct RetInst : public Instruction {

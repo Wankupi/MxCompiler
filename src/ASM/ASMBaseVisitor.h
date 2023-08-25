@@ -1,10 +1,17 @@
 #pragma once
 
+#include <ostream>
+#include <sstream>
 namespace ASM {
 
 struct ASMBaseVisitor;
 
 struct Node {
+	[[nodiscard]] std::string to_string() const {
+		std::stringstream ss;
+		print(ss);
+		return ss.str();
+	}
 	virtual void print(std::ostream &os) const = 0;
 	virtual void accept(ASMBaseVisitor *visitor) = 0;
 	virtual ~Node() = default;

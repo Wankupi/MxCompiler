@@ -4,7 +4,7 @@ struct Graph {
 	int n = 0;
 	std::vector<std::vector<int>> edges;
 
-	explicit Graph(int n) : n(n), edges(n + 1) {}
+	explicit Graph(int n = 0) : n(n), edges(n + 1) {}
 	[[nodiscard]] Graph InverseGraph() const {
 		Graph G{n};
 		for (int a = 0; a <= n; ++a)

@@ -72,6 +72,8 @@ struct ValueAllocator {
 		int2imm[val] = imm;
 		return imm;
 	}
+	using PhysicalRegArray = PhysicalReg[32];
+	PhysicalRegArray &getRegs() { return regs; }
 
 private:
 	PhysicalReg regs[32];

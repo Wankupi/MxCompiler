@@ -3,13 +3,15 @@
 #include "ASM/ASMBaseVisitor.h"
 #include "ASM/Node.h"
 
+namespace ASM {
+
 struct RewriteLayer : public ASM::ASMBaseVisitor {
 	virtual void work(ASM::Module *module) {
 		visitModule(module);
 	}
 	virtual ~RewriteLayer() = default;
 
-private:
+protected:
 	void visitModule(ASM::Module *module) override {
 		for (auto function: module->functions)
 			visitFunction(function);
@@ -54,3 +56,5 @@ protected:
 protected:
 	void add_inst(ASM::Instruction *inst) { currentBlock->stmts.push_back(inst); }
 };
+
+}// namespace ASM
