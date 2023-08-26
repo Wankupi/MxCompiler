@@ -7,6 +7,7 @@ namespace ASM {
 struct ASMBaseVisitor;
 
 struct Node {
+	std::string comment;
 	[[nodiscard]] std::string to_string() const {
 		std::stringstream ss;
 		print(ss);

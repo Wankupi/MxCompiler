@@ -13,10 +13,9 @@
 namespace ASM {
 
 struct Instruction : public Node {
-	std::string comment;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitInstruction(this); }
 	virtual std::set<Reg *> getUse() const { return {}; }
-	virtual Reg *getDef() const { return nullptr; }
+	virtual std::set<Reg *> getDef() const { return {}; }
 };
 
 struct Block : public Node {
@@ -74,7 +73,7 @@ struct LuiInst : public Instruction {
 	Imm *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLuiInst(this); }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct LiInst : public Instruction {
@@ -84,7 +83,7 @@ struct LiInst : public Instruction {
 	ImmI32 *imm = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLiInst(this); }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct LaInst : public Instruction {
@@ -93,7 +92,7 @@ struct LaInst : public Instruction {
 	GlobalPosition *globalVal = nullptr;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitLaInst(this); }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct SltInst : public Instruction {
@@ -107,7 +106,7 @@ struct SltInst : public Instruction {
 		if (auto reg = dynamic_cast<Reg *>(rs2)) ret.insert(reg);
 		return ret;
 	}
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct BinaryInst : public Instruction {
@@ -123,7 +122,7 @@ struct BinaryInst : public Instruction {
 		if (auto reg = dynamic_cast<Reg *>(rs2)) ret.insert(reg);
 		return ret;
 	}
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct MulDivRemInst : public Instruction {
@@ -135,13 +134,17 @@ struct MulDivRemInst : public Instruction {
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMulDivRemInst(this); }
 	std::set<Reg *> getUse() const override { return {rs1, rs2}; }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct CallInst : public Instruction {
 	std::string funcName;
+	std::set<Reg *> use;
+	std::set<Reg *> def;
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitCallInst(this); }
+	std::set<Reg *> getUse() const override { return use; }
+	std::set<Reg *> getDef() const override { return def; }
 };
 
 struct MoveInst : public Instruction {
@@ -150,13 +153,13 @@ struct MoveInst : public Instruction {
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitMoveInst(this); }
 	std::set<Reg *> getUse() const override { return {rs}; }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct StoreInstBase : public Instruction {
 	int size = 4;
 	Reg *val = nullptr;
-	Reg *getDef() const override { return nullptr; }
+	std::set<Reg *> getDef() const override { return {}; }
 };
 
 struct StoreOffset : public StoreInstBase {
@@ -173,13 +176,13 @@ struct StoreSymbol : public StoreInstBase {
 	void print(std::ostream &os) const override;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitStoreSymbol(this); }
 	std::set<Reg *> getUse() const override { return {val}; }
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct LoadInstBase : public Instruction {
 	int size = 4;
 	Reg *rd = nullptr;
-	Reg *getDef() const override { return rd; }
+	std::set<Reg *> getDef() const override { return {rd}; }
 };
 
 struct LoadOffset : public LoadInstBase {

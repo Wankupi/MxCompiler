@@ -5,7 +5,6 @@
 #include <map>
 #include <set>
 
-
 namespace ASM {
 
 class LiveAnalyzer : public ASM::ASMBaseVisitor {

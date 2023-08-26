@@ -53,7 +53,7 @@ foreach (test_file ${test_files})
     add_test(NAME ${testname}
             COMMAND "${PROJECT_SOURCE_DIR}/run-riscv32m.bash" $<TARGET_FILE:code> ${CodegenPath}/${test_file}
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
-    set_tests_properties(${testname} PROPERTIES LABELS "asm" TIMEOUT 40)
+    set_tests_properties(${testname} PROPERTIES LABELS "asm" TIMEOUT 10)
 endforeach ()
 
 set(OptPath "${TestdataPath}/optim")

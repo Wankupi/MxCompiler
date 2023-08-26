@@ -22,6 +22,7 @@ void InstMake::visitFunction(IR::Function *node) {
 	initFunctionParams(func, node);
 	for (auto b: node->blocks) {
 		auto block = new ASM::Block{".L-" + node->name + "-" + std::to_string(block2block.size())};
+		block->comment = b->label;
 		block2block[b] = block;
 		func->blocks.push_back(block);
 	}
@@ -37,10 +38,23 @@ void InstMake::visitFunction(IR::Function *node) {
 }
 
 void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
-	if (node->params.empty())
+	calleeSaveTo.clear();
+	if (node->params.empty() && node->name == "main")
 		return;
 	auto init_block = new ASM::Block{".L-" + node->name + "-init"};
 	func->blocks.push_back(init_block);
+	if (func->name != "main")
+		for (auto x: regs->CalleeSave) {
+			auto v = regs->registerVirtualReg();
+			calleeSaveTo[x] = v;
+			auto mv = new ASM::MoveInst{};
+			mv->rs = x;
+			mv->rd = v;
+			init_block->stmts.push_back(mv);
+		}
+
+	if (node->params.empty())
+		return;
 	for (int i = 0; i < 8 && i < node->params.size(); ++i) {
 		auto p = getReg(node->paramsVar[i]);
 		auto mv = new ASM::MoveInst{};
@@ -101,8 +115,6 @@ void InstMake::visitStoreStmt(IR::StoreStmt *node) {
 	}
 	auto inst = new ASM::StoreOffset{};
 	inst->size = node->value->type->size();
-	//	if (inst->size != 1 && inst->size != 4)
-	//		throw std::runtime_error("InstMake(store): <TODO: size not supported>" + node->to_string());
 	inst->val = getReg(node->value);
 	if (auto cur = ptr2stack.find(node->pointer); cur != ptr2stack.end()) {
 		inst->dst = regs->get("sp");
@@ -128,8 +140,6 @@ void InstMake::visitLoadStmt(IR::LoadStmt *node) {
 		ld->comment = node->to_string();
 		return;
 	}
-	//	if (inst->size != 1 && inst->size != 4)
-	//		throw std::runtime_error("InstMake(load): <TODO: size not supported>" + node->to_string());
 	auto inst = new ASM::LoadOffset{};
 	inst->size = node->res->type->size();
 	inst->rd = getReg(node->res);
@@ -265,11 +275,13 @@ void InstMake::visitCallStmt(IR::CallStmt *node) {
 		store->offset = regs->get_imm((i - 8) * 4);
 		add_inst(store);
 	}
-	for (int i = 0; i < 8 && i < node->args.size(); ++i)
-		toExpectReg(node->args[i], regs->get(10 + i));
-
 	auto call = new ASM::CallInst{};
 	call->funcName = node->func->name;
+	call->def.insert(regs->CallerSave.begin(), regs->CallerSave.end());
+	for (int i = 0; i < 8 && i < node->args.size(); ++i) {
+		call->use.insert(regs->get(10 + i));
+		toExpectReg(node->args[i], regs->get(10 + i));
+	}
 	add_inst(call);
 
 	if (node->res) {
@@ -322,6 +334,12 @@ void InstMake::visitCondBrStmt(IR::CondBrStmt *node) {
 void InstMake::visitRetStmt(IR::RetStmt *node) {
 	if (node->value)
 		toExpectReg(node->value, regs->get("a0"));
+	for (auto [x, v]: calleeSaveTo) {
+		auto mv = new ASM::MoveInst{};
+		mv->rs = v;
+		mv->rd = x;
+		add_inst(mv);
+	}
 	add_inst(new ASM::RetInst{currentFunction});
 }
 

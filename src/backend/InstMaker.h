@@ -44,6 +44,7 @@ private:
 	std::map<IR::Var *, ASM::StackVal *> ptr2stack;
 	// TODO: use global var to unify global val and string literal val
 	std::map<IR::Var *, ASM::GlobalVal *> globalVar2globalVal;
+	std::map<ASM::PhysicalReg *, ASM::VirtualReg *> calleeSaveTo;
 	int middle_block_count = 0;
 
 private:

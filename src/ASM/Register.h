@@ -1,6 +1,7 @@
 #pragma once
 #include "Val.h"
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -47,6 +48,15 @@ struct ValueAllocator {
 		name2reg["fp"] = &regs[8];
 		for (int i = 0; i < 32; ++i)
 			name2reg["x" + std::to_string(i)] = &regs[i];
+
+		// 1,5-7,10-17,28-31
+		CallerSave = {
+				&regs[1],
+				&regs[5], &regs[6], &regs[7],
+				&regs[10], &regs[11], &regs[12], &regs[13], &regs[14], &regs[15], &regs[16], &regs[17],
+				&regs[28], &regs[29], &regs[30], &regs[31]};
+		// 8-9,18-27
+		CalleeSave = {&regs[8], &regs[9], &regs[18], &regs[19], &regs[20], &regs[21], &regs[22], &regs[23], &regs[24], &regs[25], &regs[26], &regs[27]};
 	}
 	PhysicalReg *get(int id) {
 		return &regs[id];
@@ -81,6 +91,9 @@ private:
 	std::map<int, ImmI32 *> int2imm;
 	int virtualRegCount = 0;
 	std::vector<VirtualReg *> virtualRegs;
+
+public:
+	std::vector<PhysicalReg *> CallerSave, CalleeSave;
 };
 
 }// namespace ASM

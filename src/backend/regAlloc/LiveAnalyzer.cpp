@@ -28,13 +28,6 @@ void ASM::LiveAnalyzer::work() {
 		for (auto succ: successor[block])
 			predecessor[succ].push_back(block);
 	}
-	//	std::cout << "successor: " << std::endl;
-	//	for (auto &[block, suc] : successor) {
-	//		std::cout << block->label << " : ";
-	//		for (auto to : suc)
-	//			std::cout << to->label << " ";
-	//		std::cout << std::endl;
-	//	}
 
 	for (auto block: func->blocks) {
 		auto &Use = this->use[block];
@@ -44,24 +37,10 @@ void ASM::LiveAnalyzer::work() {
 			for (auto reg: inst->getUse())
 				if (!Def.contains(reg))
 					Use.insert(reg);
-			if (auto reg = inst->getDef())
+			for (auto reg: inst->getDef())
 				Def.insert(reg);
 		}
 	}
-
-	//	for (auto block: func->blocks) {
-	//		auto &Use = this->use[block];
-	//		auto &Def = this->def[block];
-	//		std::cout << "\033[32m" << block->label << "\033[0m" << std::endl;
-	//		std::cout << "Use:\t";
-	//		for (auto reg: Use)
-	//			std::cout << reg->to_string() << ' ';
-	//		std::cout << std::endl;
-	//		std::cout << "Def:\t";
-	//		for (auto reg: Def)
-	//			std::cout << reg->to_string() << ' ';
-	//		std::cout << std::endl;
-	//	}
 
 	std::queue<Block *> q;
 	std::set<Block *> inQ;

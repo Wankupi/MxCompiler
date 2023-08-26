@@ -1,30 +1,44 @@
 #include "GraphColorRegAllocator.h"
 #include "ASM/Node.h"
-#include "LiveAnalyzer.h"
-#include "RewriteLayer.h"
+#include "backend/RewriteLayer.h"
+#include "backend/regAlloc/LiveAnalyzer.h"
 #include "utils/Graph.h"
 #include <ranges>
 #include <stack>
 
 using namespace ASM;
 
-#define RED "\033[31m"
-#define GREEN "\033[32m"
-#define BLACK "\033[0m"
+struct RegPtrCmp {
+	bool operator()(const Reg *lhs, const Reg *rhs) const {
+		if (!lhs || !rhs)
+			return lhs < rhs;
+		return lhs->name < rhs->name;
+	}
+};
+
+using RegSet = std::set<Reg *, RegPtrCmp>;
+
+struct MoveInstCmp {
+	bool operator()(const MoveInst *lhs, const MoveInst *rhs) const {
+		if (!lhs || !rhs)
+			return lhs < rhs;
+		return lhs->rd->name < rhs->rd->name || (lhs->rd->name == rhs->rd->name && lhs->rs->name < rhs->rs->name);
+	}
+};
 
 struct ConflictGraph {
 	/**
 	 * Graph part
 	 */
-	std::map<Reg *, std::set<Reg *>> graph;
-	std::map<Reg *, std::set<Reg *>> cutGraph;
+	std::map<Reg *, RegSet> graph;
+	std::map<Reg *, RegSet> cutGraph;
 	std::set<std::pair<Reg *, Reg *>> edges;
 	std::set<std::pair<Reg *, Reg *>> cutEdges;
 
 	bool has(Reg *a, Reg *b) const {
 		if (a > b) std::swap(a, b);
-		bool x = edges.contains({a, b});
-		bool y = cutEdges.contains({a, b});
+		//		bool x = edges.contains({a, b});
+		//		bool y = cutEdges.contains({a, b});
 		return edges.contains({a, b}) && !cutEdges.contains({a, b});
 	}
 	bool isConflict(Reg *a, Reg *b) const {
@@ -45,7 +59,6 @@ struct ConflictGraph {
 	bool cut(Reg *a, Reg *b) {
 		if (a > b) std::swap(a, b);
 		if (!has(a, b)) return false;
-		//		std::cerr << GREEN "cut " BLACK << a->to_string() << " " << b->to_string() << std::endl;
 		graph[a].erase(b);
 		cutGraph[a].insert(b);
 		graph[b].erase(a);
@@ -86,59 +99,76 @@ struct ConflictGraph {
 	void clear() {
 		*this = ConflictGraph();
 	}
-	std::set<Reg *> &operator[](Reg *reg) { return graph[reg]; }
-	[[nodiscard]] std::map<Reg *, std::set<Reg *>> full() const {
-		std::map<Reg *, std::set<Reg *>> ret;
+	RegSet &operator[](Reg *reg) { return graph[reg]; }
+	[[nodiscard]] std::map<Reg *, RegSet> full() const {
+		std::map<Reg *, RegSet> ret;
 		for (auto &[reg, tos]: graph)
 			ret[reg].insert(tos.begin(), tos.end());
 		for (auto &[reg, tos]: cutGraph)
 			ret[reg].insert(tos.begin(), tos.end());
 		return ret;
 	}
-	std::set<Reg *> full(Reg *reg) {
-		std::set<Reg *> ret(graph[reg]);
+	RegSet full(Reg *reg) {
+		RegSet ret(graph[reg]);
 		ret.insert(cutGraph[reg].begin(), cutGraph[reg].end());
 		return ret;
 	}
 };
 
+
+using MvInstSet = std::set<MoveInst *, MoveInstCmp>;
+
 class Allocator {
+	/// @attention 以下成员在构造时初始化
+
 	ValueAllocator *regs;
 	Function *func;
 
 	static constexpr int K = 27;
+
 	std::vector<PhysicalReg *> allocatable;// 可分配的物理寄存器
 	std::vector<PhysicalReg *> callerSave;
+
+	/// @attention 以下成员在每次循环时都应清空
 
 	std::map<Block *, std::set<Reg *>> liveIn;
 	std::map<Block *, std::set<Reg *>> liveOut;
 
-	std::set<MoveInst *> moves;
-	std::map<Reg *, std::set<MoveInst *>> moveList;
+	MvInstSet moves;
+	std::map<Reg *, MvInstSet> moveList;
 
 	ConflictGraph graph;
 
-	std::set<Reg *> preColored;
-	std::set<Reg *> otherRegs;
+	RegSet preColored;
+	RegSet otherRegs;
 
-	std::set<Reg *> simplifyWorkList;
+	RegSet simplifyWorkList;
 	/// @brief 待合并的 mv 指令
 	/// @details 必不可行的直接加入simple; 不符合George,Briggs规则的被冻结; 否则合并
-	std::set<MoveInst *> coalesceWorkList;
-	std::set<Reg *> freezeWorkList;
-	std::set<Reg *> spillWorkList;
+	MvInstSet coalesceWorkList;
+	RegSet freezeWorkList;
+	RegSet spillWorkList;
 
-	std::set<MoveInst *> frozenMoves;// 不满足规则 暂时不考虑
+	MvInstSet frozenMoves;// 不满足规则 暂时不考虑
 
 	std::stack<Reg *> selectStack;
-	std::set<Reg *> selected;
+	RegSet selected;
 	std::map<Reg *, Reg *> alias;
 	std::map<Reg *, PhysicalReg *> color;
 
-	std::set<Reg *> spilledNodes;
+	RegSet spilledNodes;
 
 public:
-	Allocator(ValueAllocator *regs, Function *func) : regs(regs), func(func) {}
+	Allocator(ValueAllocator *regs, Function *func) : regs(regs), func(func) {
+		for (int i = 5; i < 32; ++i)
+			allocatable.push_back(regs->get(i));
+		for (int i = 5; i <= 7; ++i)
+			callerSave.push_back(regs->get(i));
+		for (int i = 10; i <= 17; ++i)
+			callerSave.push_back(regs->get(i));
+		for (int i = 28; i <= 31; ++i)
+			callerSave.push_back(regs->get(i));
+	}
 	void work();
 
 private:
@@ -171,7 +201,7 @@ private:
 	// try to add reg to `simplifyWorkList` if 1. need color, 2. not move related
 	void tryAddToSimplify(Reg *reg);
 	void recoverMove(Reg *reg);
-	void recoverMode(MoveInst *mv);
+	void recoverMove(MoveInst *mv);
 
 	void assignColors();
 	void rewriteProgram();
@@ -180,7 +210,6 @@ private:
 
 void GraphColorRegAllocator::work(ASM::Module *module) {
 	for (auto func: module->functions) {
-		std::cerr << RED "Function " << func->name << BLACK "\n";
 		Allocator(regs, func).work();
 	}
 }
@@ -193,28 +222,6 @@ void Allocator::work() {
 		buildGraph();
 		makeWorkList();
 
-		std::cerr << "simplify: ";
-		for (auto reg: simplifyWorkList)
-			std::cerr << reg->to_string() << ' ';
-		std::cerr << '\n';
-
-		std::cerr << "move: ";
-		for (auto &[reg, _]: moveList)
-			if (!_.empty())
-				std::cerr << reg->to_string() << ' ';
-		std::cerr << '\n';
-
-		std::cerr << "freeze: ";
-		for (auto reg: freezeWorkList)
-			std::cerr << reg->to_string() << ' ';
-		std::cerr << '\n';
-
-		std::cerr << "spill: ";
-		for (auto reg: spillWorkList)
-			std::cerr << reg->to_string() << ' ';
-		std::cerr << '\n';
-		std::cerr << std::flush;
-
 		while (!simplifyWorkList.empty() || !coalesceWorkList.empty() || !freezeWorkList.empty() || !spillWorkList.empty()) {
 			if (!simplifyWorkList.empty())
 				simplify();// 1. 尝试简化
@@ -225,27 +232,34 @@ void Allocator::work() {
 			else if (!spillWorkList.empty())
 				selectSpill();// 4. 尝试存栈
 		}
+
 		assignColors();
-		if (!spilledNodes.empty())
+		if (!spilledNodes.empty()) {
 			rewriteProgram();
+		}
 	} while (!spilledNodes.empty());
 
-	//	std::cerr << std::flush;
 	replaceVirToPhy();
-
-	//	for (auto [reg, phy]: color) {
-	//		if (dynamic_cast<PhysicalReg *>(reg)) continue;
-	//		std::cerr << reg->to_string() << " : " << (phy ? phy->to_string() : "null") << '\n';
-	//	}
 }
 
 void Allocator::clear() {
+	liveIn.clear();
+	liveOut.clear();
+	moves.clear();
 	moveList.clear();
-	coalesceWorkList.clear();
 	graph.clear();
 	preColored.clear();
 	otherRegs.clear();
+	simplifyWorkList.clear();
+	coalesceWorkList.clear();
+	freezeWorkList.clear();
+	spillWorkList.clear();
+	frozenMoves.clear();
+	selectStack = std::stack<Reg *>();
+	selected.clear();
+	alias.clear();
 	color.clear();
+	spilledNodes.clear();
 }
 
 void Allocator::init() {
@@ -253,20 +267,12 @@ void Allocator::init() {
 		preColored.insert(&reg);
 		color[&reg] = &reg;
 	}
-	for (int i = 5; i < 32; ++i)
-		allocatable.push_back(regs->get(i));
-	for (int i = 5; i <= 7; ++i)
-		callerSave.push_back(regs->get(i));
-	for (int i = 10; i <= 17; ++i)
-		callerSave.push_back(regs->get(i));
-	for (int i = 28; i <= 31; ++i)
-		callerSave.push_back(regs->get(i));
 
 	for (auto block: func->blocks)
 		for (auto inst: block->stmts) {
 			auto def = inst->getDef();
 			auto use = inst->getUse();
-			if (def) otherRegs.insert(def);
+			otherRegs.insert(def.begin(), def.end());
 			otherRegs.insert(use.begin(), use.end());
 		}
 	for (auto reg: preColored) otherRegs.erase(reg);
@@ -285,39 +291,29 @@ void Allocator::liveAnalyze() {
 	analyzer.work();
 	liveIn.swap(analyzer.liveIn);
 	liveOut.swap(analyzer.liveOut);
-	//	for (auto &[block, live]: liveOut) {
-	//		std::cout << block->label << " : ";
-	//		for (auto reg: live)
-	//			std::cout << reg->to_string() << ' ';
-	//		std::cout << std::endl;
-	//	}
 }
 
 void Allocator::buildGraph() {
 	for (auto block: func->blocks) {
-		//		std::cerr << "\033[32m Block " << block->label << "\033[0m\n";
-
 		auto live = liveOut[block];
 		for (auto inst: std::ranges::reverse_view(block->stmts)) {
 			if (auto mv = dynamic_cast<MoveInst *>(inst))
 				live.erase(mv->rs);
 
-			if (auto def = inst->getDef())
+			for (auto def: inst->getDef())
 				for (auto reg: live)
 					graph.add(def, reg);
-			if (dynamic_cast<CallInst *>(inst) != nullptr)
-				for (auto def: callerSave)
+			if (auto call = dynamic_cast<CallInst *>(inst)) {
+				for (auto def: regs->CallerSave)
 					for (auto reg: live)
 						graph.add(def, reg);
-			live.erase(inst->getDef());
+			}
+			auto def = inst->getDef();
 			auto use = inst->getUse();
+			erase_if(live, [&def](auto reg) { return def.contains(reg); });
 			live.insert(use.begin(), use.end());
 		}
 	}
-	//	for (auto &[reg, to]: graph.edges)
-	//		std::cerr << reg->to_string() << " -> " << to->to_string() << std::endl;
-	//	for (auto &[reg, tos]: graph.graph)
-	//		graph.deg(reg) = static_cast<int>(tos.size());
 }
 
 void Allocator::remove_from_graph(Reg *reg) {
@@ -325,9 +321,6 @@ void Allocator::remove_from_graph(Reg *reg) {
 	while (!adj.empty()) {
 		auto to = *adj.begin();
 		if (graph.cut(reg, to)) {
-			//			if (reg->to_string() == "v3" && to->to_string() == "v1" || reg->to_string() == "v1" && to->to_string() == "v3") {
-			//				std::cerr << "remove ! v3 - v1" << std::endl;
-			//			}
 			checkDegree(to);
 			checkDegree(reg);
 		}
@@ -345,7 +338,7 @@ void Allocator::checkDegree(Reg *reg) {
 	if (graph.deg(reg) != K - 1) return;
 	spillWorkList.erase(reg);
 	if (isMoveRelated(reg))
-		freezeWorkList.insert(reg);
+		recoverMove(reg);
 	else
 		simplifyWorkList.insert(reg);
 }
@@ -375,8 +368,6 @@ void Allocator::simplify() {
 		selectStack.push(reg);
 		selected.insert(reg);
 
-		std::cerr << GREEN "simplify" BLACK " < " << reg->to_string() << " >" << std::endl;
-
 		remove_from_graph(reg);
 	}
 }
@@ -395,7 +386,7 @@ bool Allocator::isMoveRelated(Reg *reg) {
 }
 
 bool Allocator::Briggs(MoveInst *mv) {
-	std::set<Reg *> adj = graph[mv->rd];
+	RegSet adj = graph[mv->rd];
 	int cntHigh = 0;
 	for (auto reg: graph[mv->rs]) {
 		if (adj.contains(reg)) {
@@ -435,18 +426,10 @@ void Allocator::coalesce() {
 
 	if (!George(mv) && !Briggs(mv)) {
 		frozenMoves.insert(mv);
+		freezeWorkList.insert(rd);
+		freezeWorkList.insert(rs);
 		return;
 	}
-	std::cerr << GREEN "merge" BLACK " < " << rs->to_string() << " > to < " << rd->to_string() << " >" << std::endl;
-	//
-	//	std::cerr << "adj of < " << rs->to_string() << " > : ";
-	//	for (auto x: graph[rs])
-	//		std::cerr << x->to_string() << ' ';
-	//	std::cerr << std::endl;
-	//	std::cerr << "adj of < " << rd->to_string() << " > : ";
-	//	for (auto x: graph[rd])
-	//		std::cerr << x->to_string() << ' ';
-	//	std::cerr << std::endl;
 
 	// merge rs to rd
 	alias[rs] = rd;
@@ -456,15 +439,6 @@ void Allocator::coalesce() {
 	graph.merge_to(rs, rd);
 	tryAddToSimplify(rd);
 	remove_from_all_worklist(rs);
-
-	//	std::cerr << "adj of < " << rs->to_string() << " > : ";
-	//	for (auto x: graph[rs])
-	//		std::cerr << x->to_string() << ' ';
-	//	std::cerr << std::endl;
-	//	std::cerr << "adj of < " << rd->to_string() << " > : ";
-	//	for (auto x: graph[rd])
-	//		std::cerr << x->to_string() << ' ';
-	//	std::cerr << std::endl;
 }
 
 void Allocator::freezeMoves(Reg *reg) {
@@ -482,6 +456,19 @@ void Allocator::freezeMoves(Reg *reg) {
 	}
 }
 
+void Allocator::recoverMove(MoveInst *mv) {
+	frozenMoves.erase(mv);
+	coalesceWorkList.insert(mv);
+	freezeWorkList.erase(mv->rs);
+	freezeWorkList.erase(mv->rd);
+}
+
+void Allocator::recoverMove(Reg *reg) {
+	auto mvs = getRelatedMoves(reg);
+	for (auto mv: mvs)
+		recoverMove(mv);
+}
+
 void Allocator::freeze() {
 	auto reg = *freezeWorkList.begin();
 	freezeWorkList.erase(reg);
@@ -495,22 +482,27 @@ Reg *Allocator::getRepresent(Reg *reg) {
 }
 
 void Allocator::tryAddToSimplify(Reg *reg) {
-	//	std::cerr << "try add < " << reg->to_string() << " > to sim, " << preColored.contains(reg) << " " << getRelatedMoves(reg).size() << " " << graph.deg(reg) << std::endl;
 	if (preColored.contains(reg)) return;
 	if (isMoveRelated(reg)) return;
-	if (graph.deg(reg) >= K) return;
+	if (graph.deg(reg) >= K) {
+		spillWorkList.insert(reg);
+		return;
+	}
 	if (getRepresent(reg) != reg)
 		std::cerr << "[[ warning : add " << reg->to_string() << " ]]" << std::endl;
 	freezeWorkList.erase(reg);
 	spilledNodes.erase(reg);
 	simplifyWorkList.insert(reg);
-	std::cerr << GREEN "success" BLACK << " : " << reg->to_string() << std::endl;
 }
 
 void Allocator::selectSpill() {
-	for (auto reg: spillWorkList)
-		std::cerr << reg->to_string() << ' ';
-	exit(1);
+	Reg *reg = nullptr;
+	for (auto r: spillWorkList)
+		if (!reg || graph.deg(r) > graph.deg(reg))
+			reg = r;
+	spillWorkList.erase(reg);
+	freezeMoves(reg);
+	simplifyWorkList.insert(reg);
 }
 
 void Allocator::assignColors() {
@@ -518,7 +510,7 @@ void Allocator::assignColors() {
 	while (!selectStack.empty()) {
 		auto reg = selectStack.top();
 		selectStack.pop();
-		std::set<Reg *> exist;
+		RegSet exist;
 		for (auto y: G[reg])
 			exist.insert(color[y]);// color[y] might be nullptr, but no influence
 		for (auto phy: allocatable)
@@ -534,113 +526,24 @@ void Allocator::assignColors() {
 
 	for (auto [reg, rep]: alias)
 		color[reg] = color[rep];
-
-	//	for (auto [reg, phy]: color)
-	//		if (!dynamic_cast<PhysicalReg *>(reg) || !phy)
-	//			std::cerr << reg->to_string() << " : " << (phy ? phy->to_string() : "null") << std::endl;
 }
+
+#include "Rewriter.h"
 
 void Allocator::rewriteProgram() {
-	std::cerr << "rewrite: ";
-	for (auto reg: spilledNodes)
-		std::cerr << reg->to_string() << ' ';
-	std::cerr << std::endl;
+	std::map<Reg *, StackVal *> reg2st;
+	for (auto reg: spilledNodes) {
+		auto st = new StackVal{};
+		func->stack.push_back(st);
+		reg2st[reg] = st;
+	}
+	std::map<Reg *, Reg *> passAlias;
+	for (auto [reg, rep]: alias)
+		if (spilledNodes.contains(reg))
+			passAlias.emplace(reg, rep);
+	PutStack(func, reg2st, passAlias, regs).work();
 }
-
-class DoColor : public ASM::RewriteLayer {
-	Function *func;
-	std::map<Reg *, PhysicalReg *> const &color;
-
-public:
-	explicit DoColor(Function *func, std::map<Reg *, PhysicalReg *> const &color) : func(func), color(color) {}
-	void work() {
-		visitFunction(func);
-	}
-
-private:
-	void rep(Reg *&reg) {
-		if (!color.contains(reg))
-			throw std::runtime_error("DoColor: fail to replace " + reg->to_string());
-		reg = color.at(reg);
-	}
-	void rep(Val *&val) {
-		auto reg = dynamic_cast<Reg *>(val);
-		if (!reg) return;
-		rep(reg);
-		val = reg;
-	}
-	void visitLuiInst(ASM::LuiInst *inst) override {
-		rep(inst->rd);
-		add_inst(inst);
-	}
-	void visitLiInst(ASM::LiInst *inst) override {
-		rep(inst->rd);
-		add_inst(inst);
-	}
-	void visitLaInst(ASM::LaInst *inst) override {
-		rep(inst->rd);
-		add_inst(inst);
-	}
-	void visitSltInst(ASM::SltInst *inst) override {
-		rep(inst->rd);
-		rep(inst->rs1);
-		rep(inst->rs2);
-		add_inst(inst);
-	}
-	void visitBinaryInst(ASM::BinaryInst *inst) override {
-		rep(inst->rd);
-		rep(inst->rs1);
-		rep(inst->rs2);
-		add_inst(inst);
-	}
-	void visitMulDivRemInst(ASM::MulDivRemInst *inst) override {
-		rep(inst->rd);
-		rep(inst->rs1);
-		rep(inst->rs2);
-		add_inst(inst);
-	}
-	void visitMoveInst(ASM::MoveInst *inst) override {
-		rep(inst->rd);
-		rep(inst->rs);
-		if (inst->rd != inst->rs)
-			add_inst(inst);
-	}
-	void visitStoreOffset(ASM::StoreOffset *inst) override {
-		rep(inst->dst);
-		rep(inst->val);
-		add_inst(inst);
-	}
-	void visitStoreSymbol(ASM::StoreSymbol *inst) override {
-		rep(inst->val);
-		add_inst(inst);
-	}
-	void visitLoadOffset(ASM::LoadOffset *inst) override {
-		rep(inst->rd);
-		rep(inst->src);
-		add_inst(inst);
-	}
-	void visitLoadSymbol(ASM::LoadSymbol *inst) override {
-		rep(inst->rd);
-		add_inst(inst);
-	}
-	void visitBranchInst(ASM::BranchInst *inst) override {
-		rep(inst->rs1);
-		rep(inst->rs2);
-		add_inst(inst);
-	}
-};
 
 void Allocator::replaceVirToPhy() {
-	DoColor(func, color).work();
-}
-
-void Allocator::recoverMode(MoveInst *mv) {
-	frozenMoves.erase(mv);
-	coalesceWorkList.insert(mv);
-	freezeWorkList.erase(mv->rs);
-	freezeWorkList.erase(mv->rd);
-}
-
-void Allocator::recoverMove(Reg *reg) {
-	getRelatedMoves(reg);
+	ColorIt(func, color).work();
 }

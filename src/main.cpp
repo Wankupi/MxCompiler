@@ -15,9 +15,9 @@
 #include "middle/IRBuilder.h"
 #include "middle/Mem2Reg.h"
 
-#include "backend/GraphColorRegAllocator.h"
 #include "backend/InstMaker.h"
-#include "backend/RegAllocator.h"
+#include "backend/regAlloc/GraphColorRegAllocator.h"
+#include "backend/regAlloc/NaiveRegAllocator.h"
 
 #include <fstream>
 #include <iostream>

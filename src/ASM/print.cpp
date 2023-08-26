@@ -37,11 +37,13 @@ void Function::print(std::ostream &os) const {
 }
 
 void Block::print(std::ostream &os) const {
-	os << label << ":\n";
+	os << label << ":";
+	if (!comment.empty()) os << "\t\t\t# " << comment;
+	os << '\n';
 	for (auto s: stmts) {
 		os << '\t';
 		s->print(os);
-		if (!s->comment.empty()) os << "\t\t\t; " << s->comment;
+		if (!s->comment.empty()) os << "\t\t\t# " << s->comment;
 		os << '\n';
 	}
 }
