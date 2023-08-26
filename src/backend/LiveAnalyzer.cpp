@@ -28,13 +28,13 @@ void ASM::LiveAnalyzer::work() {
 		for (auto succ: successor[block])
 			predecessor[succ].push_back(block);
 	}
-//	std::cout << "successor: " << std::endl;
-//	for (auto &[block, suc] : successor) {
-//		std::cout << block->label << " : ";
-//		for (auto to : suc)
-//			std::cout << to->label << " ";
-//		std::cout << std::endl;
-//	}
+	//	std::cout << "successor: " << std::endl;
+	//	for (auto &[block, suc] : successor) {
+	//		std::cout << block->label << " : ";
+	//		for (auto to : suc)
+	//			std::cout << to->label << " ";
+	//		std::cout << std::endl;
+	//	}
 
 	for (auto block: func->blocks) {
 		auto &Use = this->use[block];
@@ -65,6 +65,7 @@ void ASM::LiveAnalyzer::work() {
 
 	std::queue<Block *> q;
 	std::set<Block *> inQ;
+	std::set<Block *> visited;
 	for (auto block: func->blocks) {
 		auto bak = block->stmts.back();
 		if (dynamic_cast<ASM::RetInst *>(bak)) {
@@ -85,7 +86,8 @@ void ASM::LiveAnalyzer::work() {
 		for (auto reg: def[block])
 			newLiveIn.erase(reg);
 		newLiveIn.insert(use[block].begin(), use[block].end());
-		if (newLiveIn != liveIn[block] || newLiveOut != liveOut[block]) {
+		if (!visited.contains(block) || newLiveIn != liveIn[block] || newLiveOut != liveOut[block]) {
+			visited.insert(block);
 			liveIn[block].swap(newLiveIn);
 			liveOut[block].swap(newLiveOut);
 			for (auto pred: predecessor[block])

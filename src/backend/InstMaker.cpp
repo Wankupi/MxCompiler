@@ -465,7 +465,8 @@ void InstMake::phi2mv(const std::vector<std::pair<IR::Var *, IR::Val *>> &phis) 
 			q.pop();
 			auto val = from[var];
 
-			toExpectReg(val, getReg(var));
+			if (var != val)
+				toExpectReg(val, getReg(var));
 			++dealed;
 
 			if (var != val && --deg[val] == 0 && from.contains(val))
