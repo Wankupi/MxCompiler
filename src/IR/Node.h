@@ -3,6 +3,7 @@
 #include "Type.h"
 #include "Val.h"
 #include <list>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -18,7 +19,10 @@ struct Class : public IRNode {
 	void accept(IRBaseVisitor *visitor) override { visitor->visitClass(this); }
 };
 
-struct Stmt : public IRNode {};
+struct Stmt : public IRNode {
+	[[nodiscard]] virtual std::set<Val *> getUse() const { return {}; }
+	[[nodiscard]] virtual Var *getDef() const { return nullptr; }
+};
 
 struct BasicBlock : public IRNode {
 	explicit BasicBlock(std::string label) : label(std::move(label)) {}
@@ -49,6 +53,7 @@ struct AllocaStmt : public Stmt {
 	PtrVar *res = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitAllocaStmt(this); }
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct StoreStmt : public Stmt {
@@ -57,6 +62,7 @@ struct StoreStmt : public Stmt {
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitStoreStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {pointer, value}; }
 };
 
 struct LoadStmt : public Stmt {
@@ -65,6 +71,8 @@ struct LoadStmt : public Stmt {
 	Var *pointer = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitLoadStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {pointer}; }
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct ArithmeticStmt : public Stmt {
@@ -76,6 +84,8 @@ struct ArithmeticStmt : public Stmt {
 	// possible cmd: add, sub, mul, sdiv, srem, shl, ashr, and, or, xor
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitArithmeticStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {lhs, rhs}; }
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct IcmpStmt : public Stmt {
@@ -87,6 +97,8 @@ struct IcmpStmt : public Stmt {
 	// possible cmd: eq, ne, SltInst, sgt, sle, sge
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitIcmpStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {lhs, rhs}; }
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct RetStmt : public Stmt {
@@ -95,6 +107,11 @@ struct RetStmt : public Stmt {
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitRetStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override {
+		if (value) return {value};
+		else
+			return {};
+	}
 };
 
 struct GetElementPtrStmt : public Stmt {
@@ -106,6 +123,14 @@ struct GetElementPtrStmt : public Stmt {
 	std::vector<Val *> indices;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitGetElementPtrStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override {
+		std::set<Val *> ret;
+		ret.insert(pointer);
+		for (auto index: indices)
+			ret.insert(index);
+		return ret;
+	}
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct CallStmt : public Stmt {
@@ -115,6 +140,13 @@ struct CallStmt : public Stmt {
 	std::vector<Val *> args;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitCallStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override {
+		std::set<Val *> ret;
+		for (auto arg: args)
+			ret.insert(arg);
+		return ret;
+	}
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct BrStmt : public Stmt {};
@@ -133,6 +165,7 @@ struct CondBrStmt : public BrStmt {
 	BasicBlock *falseBlock = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitCondBrStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {cond}; }
 };
 
 struct PhiStmt : public Stmt {
@@ -141,6 +174,13 @@ struct PhiStmt : public Stmt {
 	std::map<BasicBlock *, Val *> branches;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitPhiStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override {
+		std::set<Val *> ret;
+		for (auto [block, val]: branches)
+			ret.insert(val);
+		return ret;
+	}
+	[[nodiscard]] Var *getDef() const override { return res; }
 };
 
 struct UnreachableStmt : public Stmt {
@@ -155,6 +195,8 @@ struct GlobalStmt : public Stmt {
 	Val *value = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitGlobalStmt(this); }
+	[[nodiscard]] std::set<Val *> getUse() const override { return {value}; }
+	[[nodiscard]] Var *getDef() const override { return var; }
 };
 
 struct GlobalStringStmt : public Stmt {
@@ -162,6 +204,7 @@ struct GlobalStringStmt : public Stmt {
 	StringLiteralVar *var = nullptr;
 	void print(std::ostream &out) const override;
 	void accept(IRBaseVisitor *visitor) override { visitor->visitGlobalStringStmt(this); }
+	[[nodiscard]] Var *getDef() const override { return var; }
 };
 
 struct Module : public IRNode {

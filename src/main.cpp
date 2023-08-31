@@ -19,6 +19,7 @@
 #include "backend/regAlloc/GraphColorRegAllocator.h"
 #include "backend/regAlloc/NaiveRegAllocator.h"
 
+#include "middle/ConstFold/ConstFold.h"
 #include <fstream>
 #include <iostream>
 
@@ -55,7 +56,11 @@ int main(int argc, char *argv[]) {
 
 		auto ir = irEnvironment.get_module();
 
-		IR::Mem2Reg(irEnvironment).work();
+		if (!config.contains("-no-mem2reg"))
+			IR::Mem2Reg(irEnvironment).work();
+
+		if (!config.contains("-no-const-fold"))
+			IR::ConstFold(irEnvironment).work();
 
 		if (config.contains("-emit-llvm-file")) {
 			std::ofstream out("test.ll", std::ios::out);
@@ -74,16 +79,25 @@ int main(int argc, char *argv[]) {
 			InstMake instMaker(&asmModule, &regs);
 			instMaker.visit(ir);
 		}
-		if (config.contains("-SS")) {
+		if (config.contains("-SS-file")) {
 			std::ofstream out("test.ss", std::ios::out);
 			asmModule.print(out);
 		}
-		GraphColorRegAllocator(&regs).work(&asmModule);
-		if (config.contains("-S"))
+		else if (config.contains("-SS")) {
 			asmModule.print(std::cout);
-		else if (config.contains("-S-file")) {
+			return 0;
+		}
+		if (config.contains("-naive-reg-alloc"))
+			ASM::NaiveRegAllocator(&regs).work(&asmModule);
+		else
+			GraphColorRegAllocator(&regs).work(&asmModule);
+		if (config.contains("-S-file")) {
 			std::ofstream out("test.s", std::ios::out);
 			asmModule.print(out);
+		}
+		else if (config.contains("-S")) {
+			asmModule.print(std::cout);
+			return 0;
 		}
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;

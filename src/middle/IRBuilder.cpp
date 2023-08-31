@@ -656,7 +656,6 @@ void IRBuilder::visitContinueStmtNode(AstContinueStmtNode *node) {
 
 void IRBuilder::visitIfStmtNode(AstIfStmtNode *node) {
 	auto after = env.createBasicBlock("if_end_" + std::to_string(ifCounter));
-	auto br_after = env.createDirectBrStmt(after);
 
 	for (auto &clause: node->ifStmts) {
 		++ifCounter;
@@ -671,14 +670,14 @@ void IRBuilder::visitIfStmtNode(AstIfStmtNode *node) {
 
 		add_block(true_block);
 		visit(clause.second);
-		add_stmt(br_after);
+		add_stmt(env.createDirectBrStmt(after));
 
 		if (false_block)
 			add_block(false_block);
 	}
 	if (node->elseStmt) {
 		visit(node->elseStmt);
-		add_stmt(br_after);
+		add_stmt(env.createDirectBrStmt(after));
 	}
 	add_block(after);
 }

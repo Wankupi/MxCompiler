@@ -43,10 +43,10 @@ struct RewriteLayer : public IRBaseVisitor {
 	void visitGlobalStringStmt(GlobalStringStmt *node) override { add_stmt(node); }
 
 protected:
-	void add_stmt(Stmt *stmt) {
+	virtual void add_stmt(Stmt *stmt) {
 		current_block->stmts.push_back(stmt);
 	}
-	void add_phi(PhiStmt *phi) {
+	virtual void add_phi(PhiStmt *phi) {
 		current_block->phis[phi->res] = phi;
 	}
 
