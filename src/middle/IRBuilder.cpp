@@ -6,7 +6,7 @@
 
 using namespace IR;
 
-static constexpr const char *empty_string = "";
+static constexpr const std::string empty_string;
 
 Val *IRBuilder::type_to_default_value(IR::Type *type) {
 	if (type == env.boolType)
@@ -280,7 +280,6 @@ void IRBuilder::visitLiterExprNode(AstLiterExprNode *node) {
 					throw std::runtime_error("unknown escape sequence");
 			}
 		}
-		str += '\0';
 		exprResult[node] = register_literal_str(str);
 	}
 	else
@@ -732,7 +731,7 @@ void IRBuilder::visitSingleExprNode(AstSingleExprNode *node) {
 		if (node->right)
 			exprResult[node] = add->lhs;
 		else
-			exprResult[node] = add->res;
+			exprResult[node] = exprResult[node->expr];
 		auto store = env.createStoreStmt(add->res, dynamic_cast<Var *>(exprResult[node->expr]));
 		add_stmt(store);
 	}
