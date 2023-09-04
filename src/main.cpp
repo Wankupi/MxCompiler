@@ -14,12 +14,13 @@
 
 #include "middle/IRBuilder.h"
 #include "middle/Mem2Reg.h"
+#include "middle/ConstFold/ConstFold.h"
+#include "middle/UnusedFunctionRemover.h"
 
 #include "backend/InstMaker.h"
 #include "backend/regAlloc/GraphColorRegAllocator.h"
 #include "backend/regAlloc/NaiveRegAllocator.h"
 
-#include "middle/ConstFold/ConstFold.h"
 #include <fstream>
 #include <iostream>
 
@@ -61,6 +62,8 @@ int main(int argc, char *argv[]) {
 
 		if (!config.contains("-no-const-fold"))
 			IR::ConstFold(irEnvironment).work();
+
+		IR::UnusedFunctionRemover(irEnvironment).work();
 
 		if (config.contains("-emit-llvm-file")) {
 			std::ofstream out("test.ll", std::ios::out);

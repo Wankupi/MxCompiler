@@ -63,6 +63,8 @@ void Folder::work() {
 	init();
 	for (auto [var, inst]: def)
 		visit(inst);
+	for (auto block: func->blocks)
+		check_block(block);
 	while (!blockQueue.empty() || !stmtQueue.empty()) {
 		while (!stmtQueue.empty()) {
 			auto stmt = *stmtQueue.begin();
@@ -138,7 +140,8 @@ void Folder::remove_block(BasicBlock *block) {
 		return;
 	}
 	if (!block_deletable(block))
-		throw std::runtime_error("ConstFold: remove block fail, not deletable." + block->label);
+		return;
+
 	removedBlock.insert(block);
 	auto pre = predecessors[block];
 	for (auto p: pre)
@@ -171,32 +174,39 @@ void Folder::substitute_block(BasicBlock *block) {
 				cond->falseBlock = to;
 			else
 				throw std::runtime_error("ConstFold: substitute block fail, condbr not validate.");
+			successors[pre] = {cond->trueBlock, cond->falseBlock};
+			if (cond->trueBlock == cond->falseBlock) {
+				pre->stmts.back() = env.createDirectBrStmt(cond->trueBlock);
+				if (auto var = dynamic_cast<Var *>(cond->cond))
+					usage[var].erase(cond);
+			}
 		}
 		else if (auto direct = dynamic_cast<DirectBrStmt *>(bak)) {
 			if (direct->block != block)
-				throw std::runtime_error("ConstFold: substitute block fail, directbr not validate.");
+				throw std::runtime_error("ConstFold: substitute block fail, direct br not validate." + pre->label + " " + block->label + " " + direct->block->label);
 			direct->block = to;
+			successors[pre] = {to};
 		}
 		else
 			throw std::runtime_error("ConstFold: substitute block fail, last stmt not validate.");
 
+		predecessors[to].insert(pre);
 		for (auto [res, phi]: to->phis)
 			if (phi->branches.contains(block)) {
 				phi->branches[pre] = phi->branches[block];
 				stmtQueue.insert(phi);
 			}
 	}
-	for (auto pre: predecessors[block])
+	for (auto pre: pres)
 		check_block(pre);
-	if (predecessors.empty()) {
+	if (predecessors[block].empty()) {
 		cut_edge(block, to);
 		removedBlock.insert(block);
 	}
+	check_block(to);
 }
 
 void Folder::merge_block(BasicBlock *block) {
-	if (removedBlock.contains(block))
-		return;
 	// try merge 'block' to 'from'
 	auto from = *predecessors[block].cbegin();
 	// check is able to merge

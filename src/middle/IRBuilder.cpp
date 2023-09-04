@@ -827,18 +827,16 @@ void IRBuilder::visitTernaryExprNode(AstTernaryExprNode *node) {
 	auto br_cond = env.createCondBrStmt(remove_variable_pointer(exprResult[node->cond]), true_expr, false_expr);
 	add_stmt(br_cond);
 
-	auto br_end = env.createDirectBrStmt(end);
-
 	add_block(true_expr);
 	visit(node->trueExpr);
 	auto true_res = remove_variable_pointer(exprResult[node->trueExpr]);
-	add_stmt(br_end);
+	add_stmt(env.createDirectBrStmt(end));
 	auto from_true = currentFunction->blocks.back();
 
 	add_block(false_expr);
 	visit(node->falseExpr);
 	auto false_res = remove_variable_pointer(exprResult[node->falseExpr]);
-	add_stmt(br_end);
+	add_stmt(env.createDirectBrStmt(end));
 	auto from_false = currentFunction->blocks.back();
 
 	add_block(end);
