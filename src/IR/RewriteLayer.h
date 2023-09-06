@@ -1,3 +1,4 @@
+#pragma once
 #include "IR/IRBaseVisitor.h"
 #include "Node.h"
 

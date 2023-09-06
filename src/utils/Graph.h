@@ -105,9 +105,9 @@ struct DominateTree {
 struct DominanceFrontier {
 	Graph G;
 	DominateTree dom;
-	std::vector<std::vector<int>> in, out;
+	std::vector<std::vector<int>> out;
 
-	DominanceFrontier(Graph &g, DominateTree &t) : G(g), dom(t), in(g.n + 1), out(g.n + 1) {}
+	DominanceFrontier(Graph &g, DominateTree &t) : G(g), dom(t), out(g.n + 1) {}
 	void work() {
 		int n = G.n;
 		Graph tree(n);
@@ -123,9 +123,14 @@ struct DominanceFrontier {
 				int a = dom.idom[x];
 				if (a == 0) continue;
 				if (!(dfn[x] <= dfn[y] && dfn[y] <= dfn[x] + siz[x] - 1)) {
-					in[y].push_back(x);
+					//					in[y].push_back(x);
 					out[x].push_back(y);
 				}
 			}
+		for (int i = n; i >= 1; --i) {
+			int x = gdfn.idfn[i];
+			int y = dom.idom[x];
+			out[y].insert(out[y].end(), out[x].begin(), out[x].end());
+		}
 	}
 };

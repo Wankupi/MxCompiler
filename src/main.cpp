@@ -12,9 +12,9 @@
 #include "Semantic/Scope.h"
 #include "Semantic/SemanticChecker.h"
 
-#include "middle/IRBuilder.h"
-#include "middle/Mem2Reg.h"
 #include "middle/ConstFold/ConstFold.h"
+#include "middle/IRBuilder.h"
+#include "middle/Mem2Reg/Mem2Reg.h"
 #include "middle/UnusedFunctionRemover.h"
 
 #include "backend/InstMaker.h"
@@ -63,7 +63,8 @@ int main(int argc, char *argv[]) {
 		if (!config.contains("-no-const-fold"))
 			IR::ConstFold(irEnvironment).work();
 
-		IR::UnusedFunctionRemover(irEnvironment).work();
+		if (!config.contains("-no-remove-unused-function"))
+			IR::UnusedFunctionRemover(irEnvironment).work();
 
 		if (config.contains("-emit-llvm-file")) {
 			std::ofstream out("test.ll", std::ios::out);
