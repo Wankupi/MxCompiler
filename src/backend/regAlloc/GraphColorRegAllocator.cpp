@@ -510,6 +510,7 @@ void Allocator::assignColors() {
 	while (!selectStack.empty()) {
 		auto reg = selectStack.top();
 		selectStack.pop();
+		if (preColored.contains(reg)) continue;
 		RegSet exist;
 		for (auto y: G[reg])
 			exist.insert(color[y]);// color[y] might be nullptr, but no influence
@@ -537,11 +538,7 @@ void Allocator::rewriteProgram() {
 		func->stack.push_back(st);
 		reg2st[reg] = st;
 	}
-	std::map<Reg *, Reg *> passAlias;
-	for (auto [reg, rep]: alias)
-		if (spilledNodes.contains(reg))
-			passAlias.emplace(reg, rep);
-	PutStack(func, reg2st, passAlias, regs).work();
+	PutStack(func, reg2st, alias, regs).work();
 }
 
 void Allocator::replaceVirToPhy() {

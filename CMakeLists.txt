@@ -47,7 +47,7 @@ foreach (test_file ${test_files})
     add_test(NAME ${testname}
             COMMAND "${PROJECT_SOURCE_DIR}/run-llvm-ir.bash" $<TARGET_FILE:code> ${CodegenPath}/${test_file}
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
-    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 3)
+    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 0.3)
 
     set(testname "asm|${filename}")
     add_test(NAME ${testname}
@@ -65,13 +65,31 @@ foreach (test_file ${test_files})
     add_test(NAME ${testname}
             COMMAND "${PROJECT_SOURCE_DIR}/run-llvm-ir.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
-    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 3)
+    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 0.3)
 
     set(testname "opt1|${filename}")
     add_test(NAME ${testname}
             COMMAND "${PROJECT_SOURCE_DIR}/run-riscv32m.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
-    set_tests_properties(${testname} PROPERTIES LABELS "opt1" TIMEOUT 40)
+    set_tests_properties(${testname} PROPERTIES LABELS "opt" TIMEOUT 10)
+endforeach ()
+
+set(OptPath "${TestdataPath}/optim-new")
+file(GLOB_RECURSE test_files RELATIVE ${OptPath} ${OptPath}/**.mx)
+foreach (test_file ${test_files})
+    string(REGEX REPLACE ".*/" "" filename "${test_file}")
+
+    set(testname "ir-opt-new|${filename}")
+    add_test(NAME ${testname}
+            COMMAND "${PROJECT_SOURCE_DIR}/run-llvm-ir.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "ir" TIMEOUT 0.3)
+
+    set(testname "opt-new|${filename}")
+    add_test(NAME ${testname}
+            COMMAND "${PROJECT_SOURCE_DIR}/run-riscv32m.bash" $<TARGET_FILE:code> ${OptPath}/${test_file}
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/run")
+    set_tests_properties(${testname} PROPERTIES LABELS "opt" TIMEOUT 10)
 endforeach ()
 
 enable_testing()

@@ -111,9 +111,9 @@ private:
 			inst->rd = alias.at(inst->rd);
 		if (alias.contains(inst->rs))
 			inst->rs = alias.at(inst->rs);
-		if (inst->rd == inst->rs)
-			return;
 		bool containRd = reg2st.contains(inst->rd), containRs = reg2st.contains(inst->rs);
+		if (inst->rd == inst->rs && containRd)
+			return;
 		if (containRd) {
 			if (containRs)
 				inst->rs = get_src(inst->rs);
@@ -129,7 +129,7 @@ private:
 			ld->rd = inst->rd;
 			ld->src = regs->get("sp");
 			ld->offset = reg2st.at(inst->rs)->get_offset();
-			ld->comment = "move spilled reg " + inst->rd->to_string() + " from stack";
+			ld->comment = "move spilled reg " + inst->rs->to_string() + " from stack";
 			add_inst(ld);
 		}
 		else
