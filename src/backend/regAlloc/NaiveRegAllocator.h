@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ASM/Register.h"
+#include "ASM/RewriteLayer.h"
 #include "BaseRegAllocator.h"
-#include "backend/RewriteLayer.h"
 
 namespace ASM {
 struct NaiveRegAllocator : public ASM::BaseRegAllocator {

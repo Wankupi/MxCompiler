@@ -32,8 +32,12 @@ void Function::print(std::ostream &os) const {
 		os << "\taddi\tsp, sp, -" << sp_size << "\t\t; var=" << stack.size() << " call=" << std::max(max_call_arg_size - 8, 0) << '\n';
 	if (max_call_arg_size >= 0)
 		os << "\tsw\tra, " << stack.front()->offset << "(sp)\n";
-	for (auto b: blocks)
-		b->print(os);
+
+	for (auto cur = blocks.begin(); cur != blocks.end();) {
+		auto bb = cur++;
+		auto next = cur == blocks.end() ? nullptr : *cur;
+		(*bb)->print(os, next);
+	}
 }
 
 void Block::print(std::ostream &os) const {
@@ -41,6 +45,20 @@ void Block::print(std::ostream &os) const {
 	if (!comment.empty()) os << "\t\t\t# " << comment;
 	os << '\n';
 	for (auto s: stmts) {
+		os << '\t';
+		s->print(os);
+		if (!s->comment.empty()) os << "\t\t\t# " << s->comment;
+		os << '\n';
+	}
+}
+
+void Block::print(std::ostream &os, Block *next) const {
+	os << label << ":";
+	if (!comment.empty()) os << "\t\t\t# " << comment;
+	os << '\n';
+	for (auto s: stmts) {
+		if (auto j = dynamic_cast<JumpInst *>(s); j && j->dst == next)
+			break;
 		os << '\t';
 		s->print(os);
 		if (!s->comment.empty()) os << "\t\t\t# " << s->comment;

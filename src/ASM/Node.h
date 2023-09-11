@@ -25,6 +25,7 @@ struct Block : public Node {
 	std::list<Instruction *> stmts;
 
 	void print(std::ostream &os) const override;
+	void print(std::ostream &os, Block *next) const;
 	void accept(ASM::ASMBaseVisitor *visitor) override { visitor->visitBlock(this); }
 };
 

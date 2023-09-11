@@ -5,7 +5,7 @@
 #include <queue>
 #include <set>
 
-#include "middle/ConstFold/ConstFold.h"
+#include "opt/IR/ConstFold/ConstFold.h"
 
 namespace IR {
 

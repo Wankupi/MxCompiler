@@ -12,14 +12,15 @@
 #include "Semantic/Scope.h"
 #include "Semantic/SemanticChecker.h"
 
-#include "middle/ConstFold/ConstFold.h"
 #include "middle/IRBuilder.h"
-#include "middle/Mem2Reg/Mem2Reg.h"
-#include "middle/UnusedFunctionRemover.h"
 
 #include "backend/InstMaker.h"
 #include "backend/regAlloc/GraphColorRegAllocator.h"
 #include "backend/regAlloc/NaiveRegAllocator.h"
+
+#include "opt/IR/ConstFold/ConstFold.h"
+#include "opt/IR/Mem2Reg/Mem2Reg.h"
+#include "opt/IR/UnusedFunctionRemover.h"
 
 #include <fstream>
 #include <iostream>
