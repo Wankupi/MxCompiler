@@ -688,7 +688,7 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	auto result = env.createBasicBlock("short_result_" + std::to_string(andOrCounter));
 
 	visit(node->lhs);
-	auto calc_left = currentFunction->blocks.back();
+	auto left_block = currentFunction->blocks.back();
 	auto br = env.createCondBrStmt(remove_variable_pointer(exprResult[node->lhs]), nullptr, nullptr);
 	if (node->op == "&&") {
 		br->trueBlock = calc_right;
@@ -708,12 +708,13 @@ void IRBuilder::enterAndOrBinaryExprNode(AstBinaryExprNode *node) {
 	auto br2result = env.createDirectBrStmt(result);
 	add_stmt(br2result);
 
+	auto right_block = currentFunction->blocks.back();
 	add_block(result);
 	auto phi = env.createPhiStmt(register_annoy_var(env.boolType, ".short."));
 	if (node->op == "&&")
-		phi->branches = {{calc_left, env.literal(false)}, {calc_right, rhs_res}};
+		phi->branches = {{left_block, env.literal(false)}, {right_block, rhs_res}};
 	else
-		phi->branches = {{calc_left, env.literal(true)}, {calc_right, rhs_res}};
+		phi->branches = {{left_block, env.literal(true)}, {right_block, rhs_res}};
 	exprResult[node] = phi->res;
 	add_phi(phi);
 }
