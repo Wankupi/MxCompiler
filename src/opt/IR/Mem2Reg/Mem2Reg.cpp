@@ -12,15 +12,15 @@ namespace IR {
 class DefUseCollector : private RewriteLayer {
 public:
 	std::set<Var *> use;
-	std::map<PtrVar *, Val *> def;
+	std::unordered_map<PtrVar *, Val *> def;
 
 private:
-	std::map<Val *, Val *> &substitute;
+	std::unordered_map<Val *, Val *> &substitute;
 	BasicBlock *workBlock = nullptr;
 	std::set<PtrVar *> const &allocaVars;
 
 public:
-	explicit DefUseCollector(BasicBlock *basicBlock, std::set<PtrVar *> const &allocaVars, std::map<Val *, Val *> &globalSub)
+	explicit DefUseCollector(BasicBlock *basicBlock, std::set<PtrVar *> const &allocaVars, std::unordered_map<Val *, Val *> &globalSub)
 		: workBlock(basicBlock), allocaVars(allocaVars), substitute(globalSub) {}
 	void calc_def() {
 		for (auto stmt: workBlock->stmts) {
@@ -120,19 +120,19 @@ class Mem2RegFunc {
 	Wrapper &env;
 	Function *func;
 	int n = 0;
-	std::map<BasicBlock *, std::vector<BasicBlock *>> predecessors, successors;
-	std::map<BasicBlock *, int> ptr2id;
+	std::unordered_map<BasicBlock *, std::vector<BasicBlock *>> predecessors, successors;
+	std::unordered_map<BasicBlock *, int> ptr2id;
 	std::vector<BasicBlock *> id2ptr;
 	Graph cfg;
-	std::map<BasicBlock *, BasicBlock *> idom;
-	std::map<BasicBlock *, std::vector<BasicBlock *>> dominates, frontiers;
+	std::unordered_map<BasicBlock *, BasicBlock *> idom;
+	std::unordered_map<BasicBlock *, std::vector<BasicBlock *>> dominates, frontiers;
 
 	std::set<PtrVar *> vars;
-	std::map<Val *, Val *> substitute;
-	std::map<BasicBlock *, DefUseCollector> trans;
+	std::unordered_map<Val *, Val *> substitute;
+	std::unordered_map<BasicBlock *, DefUseCollector> trans;
 
-	std::map<BasicBlock *, std::map<PtrVar *, PhiStmt>> def_inherit;
-	std::map<PtrVar *, int> phi_counter;
+	std::unordered_map<BasicBlock *, std::unordered_map<PtrVar *, PhiStmt>> def_inherit;
+	std::unordered_map<PtrVar *, int> phi_counter;
 
 public:
 	explicit Mem2RegFunc(Wrapper &wrapper, Function *func)
@@ -144,7 +144,7 @@ private:
 	void build_dom_tree();
 	void collect_variables();
 	void transfer_def(BasicBlock *block, PtrVar *var);
-	void complete_phi(std::map<PtrVar *, Val *> const &def, BasicBlock *block, BasicBlock *from);
+	void complete_phi(std::unordered_map<PtrVar *, Val *> const &def, BasicBlock *block, BasicBlock *from);
 	void simplify_phi();
 
 	Val *get_substitute(Val *val) {
@@ -269,7 +269,7 @@ void Mem2RegFunc::transfer_def(IR::BasicBlock *block, IR::PtrVar *var) {
 		transfer_def(y, var);
 }
 
-void Mem2RegFunc::complete_phi(const std::map<PtrVar *, Val *> &def, BasicBlock *block, BasicBlock *from) {
+void Mem2RegFunc::complete_phi(const std::unordered_map<PtrVar *, Val *> &def, BasicBlock *block, BasicBlock *from) {
 	auto &phis = def_inherit[block];
 	for (auto &[var, phi]: phis) {
 		if (def.contains(var))
@@ -280,7 +280,7 @@ void Mem2RegFunc::complete_phi(const std::map<PtrVar *, Val *> &def, BasicBlock 
 }
 
 void Mem2RegFunc::simplify_phi() {
-	std::map<Var *, std::vector<PhiStmt *>> uses;
+	std::unordered_map<Var *, std::vector<PhiStmt *>> uses;
 	auto add_phi_use = [&](PhiStmt *phi) {
 		for (auto &[block, val]: phi->branches)
 			if (auto var = dynamic_cast<Var *>(val))
@@ -290,8 +290,14 @@ void Mem2RegFunc::simplify_phi() {
 	std::queue<Var *> que;
 	auto check_phi = [&](PhiStmt *phi) {
 		if (substitute.contains(phi->res)) return;
-		for (auto &[block, val]: phi->branches)
-			val = get_substitute(val);
+		for (auto &[block, val]: phi->branches) {
+			auto new_val = get_substitute(val);
+			if (new_val != val) {
+				val = new_val;
+				if (auto var = dynamic_cast<Var *>(new_val))
+					uses[var].push_back(phi);
+			}
+		}
 		bool all_same = true;
 		Val *same_val = nullptr;
 		for (auto [block, val]: phi->branches) {
