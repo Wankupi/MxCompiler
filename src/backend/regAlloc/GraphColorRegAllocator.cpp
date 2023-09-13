@@ -127,7 +127,6 @@ class Allocator {
 	static constexpr int K = 27;
 
 	std::vector<PhysicalReg *> allocatable;// 可分配的物理寄存器
-	std::vector<PhysicalReg *> callerSave;
 
 	/// @attention 以下成员在每次循环时都应清空
 
@@ -160,14 +159,8 @@ class Allocator {
 
 public:
 	Allocator(ValueAllocator *regs, Function *func) : regs(regs), func(func) {
-		for (int i = 5; i < 32; ++i)
-			allocatable.push_back(regs->get(i));
-		for (int i = 5; i <= 7; ++i)
-			callerSave.push_back(regs->get(i));
-		for (int i = 10; i <= 17; ++i)
-			callerSave.push_back(regs->get(i));
-		for (int i = 28; i <= 31; ++i)
-			callerSave.push_back(regs->get(i));
+		allocatable = regs->CallerSave;
+		allocatable.insert(allocatable.end(), regs->CalleeSave.begin(), regs->CalleeSave.end());
 	}
 	void work();
 
@@ -206,6 +199,7 @@ private:
 	void assignColors();
 	void rewriteProgram();
 	void replaceVirToPhy();
+	void addCalleeSave();
 };
 
 void GraphColorRegAllocator::work(ASM::Module *module) {
@@ -240,6 +234,7 @@ void Allocator::work() {
 	} while (!spilledNodes.empty());
 
 	replaceVirToPhy();
+	addCalleeSave();
 }
 
 void Allocator::clear() {
@@ -543,4 +538,50 @@ void Allocator::rewriteProgram() {
 
 void Allocator::replaceVirToPhy() {
 	ColorIt(func, color).work();
+}
+
+void Allocator::addCalleeSave() {
+	std::vector<std::pair<PhysicalReg *, StackVal *>> reg2st;
+	std::set<PhysicalReg *> defined;
+	for (auto block: func->blocks)
+		for (auto inst: block->stmts)
+			for (auto reg: inst->getDef())
+				defined.insert(color[getRepresent(reg)]);
+	for (auto reg: regs->CalleeSave)
+		if (defined.contains(reg)) {
+			auto st = new StackVal{};
+			func->stack.push_back(st);
+			reg2st.emplace_back(reg, st);
+		}
+	std::vector<Instruction *> tmp;
+
+	for (auto [reg, st]: reg2st) {
+		auto store = new StoreOffset;
+		store->dst = regs->get("sp");
+		store->offset = st->get_offset();
+		store->val = reg;
+		tmp.push_back(store);
+	}
+	if (tmp.empty())
+		return;
+	auto initBlock = func->blocks.front();
+	initBlock->stmts.insert(initBlock->stmts.begin(), tmp.begin(), tmp.end());
+	tmp.clear();
+
+	for (auto block: func->blocks) {
+		auto &stmts = block->stmts;
+		for (auto cur = stmts.begin(); cur != stmts.end(); ++cur) {
+			auto ret = dynamic_cast<RetInst *>(*cur);
+			if (!ret) continue;
+			for (auto [reg, st]: reg2st) {
+				auto load = new LoadOffset;
+				load->rd = reg;
+				load->offset = st->get_offset();
+				load->src = regs->get("sp");
+				tmp.push_back(load);
+			}
+			stmts.insert(cur, tmp.begin(), tmp.end());
+			tmp.clear();
+		}
+	}
 }

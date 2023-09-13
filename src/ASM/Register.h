@@ -49,9 +49,10 @@ struct ValueAllocator {
 		for (int i = 0; i < 32; ++i)
 			name2reg["x" + std::to_string(i)] = &regs[i];
 
-		// 1,5-7,10-17,28-31
+		// special deal: ra(x1)
+		// 5-7,10-17,28-31
 		CallerSave = {
-				&regs[1],
+				//				&regs[1],
 				&regs[5], &regs[6], &regs[7],
 				&regs[10], &regs[11], &regs[12], &regs[13], &regs[14], &regs[15], &regs[16], &regs[17],
 				&regs[28], &regs[29], &regs[30], &regs[31]};

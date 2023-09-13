@@ -39,22 +39,10 @@ void InstMake::visitFunction(IR::Function *node) {
 
 void InstMake::initFunctionParams(ASM::Function *func, IR::Function *node) {
 	calleeSaveTo.clear();
-	if (node->params.empty() && node->name == "main")
+		if (node->params.empty())
 		return;
 	auto init_block = new ASM::Block{".L-" + node->name + "-init"};
 	func->blocks.push_back(init_block);
-	if (func->name != "main")
-		for (auto x: regs->CalleeSave) {
-			auto v = regs->registerVirtualReg();
-			calleeSaveTo[x] = v;
-			auto mv = new ASM::MoveInst{};
-			mv->rs = x;
-			mv->rd = v;
-			init_block->stmts.push_back(mv);
-		}
-
-	if (node->params.empty())
-		return;
 	for (int i = 0; i < 8 && i < node->params.size(); ++i) {
 		auto p = getReg(node->paramsVar[i]);
 		auto mv = new ASM::MoveInst{};
