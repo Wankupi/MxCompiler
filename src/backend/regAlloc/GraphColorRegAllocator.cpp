@@ -30,9 +30,9 @@ struct ConflictGraph {
 	/**
 	 * Graph part
 	 */
-	std::map<Reg *, RegSet> graph;
+	std::map<Reg *, RegSet> graph;// only existed edge
 	std::map<Reg *, RegSet> cutGraph;
-	std::set<std::pair<Reg *, Reg *>> edges;
+	std::set<std::pair<Reg *, Reg *>> edges;// all edge, including cut edges
 	std::set<std::pair<Reg *, Reg *>> cutEdges;
 
 	bool has(Reg *a, Reg *b) const {
@@ -228,9 +228,8 @@ void Allocator::work() {
 		}
 
 		assignColors();
-		if (!spilledNodes.empty()) {
+		if (!spilledNodes.empty())
 			rewriteProgram();
-		}
 	} while (!spilledNodes.empty());
 
 	replaceVirToPhy();
@@ -412,7 +411,7 @@ void Allocator::coalesce() {
 	auto rd = getRepresent(mv->rd), rs = getRepresent(mv->rs);
 	if (preColored.contains(rs))
 		std::swap(rd, rs);
-	if (rd == rs || preColored.contains(rs) || graph.has(rd, rs) ||
+	if (rd == rs || preColored.contains(rs) || graph.isConflict(rd, rs) ||
 		rd == regs->get("zero") || rs == regs->get("zero")) {
 		tryAddToSimplify(rd);
 		tryAddToSimplify(rs);
