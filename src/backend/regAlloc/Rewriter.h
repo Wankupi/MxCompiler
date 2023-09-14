@@ -52,7 +52,6 @@ class PutStack : public BaseRegAllocator {
 	std::map<Reg *, StackVal *> const &reg2st;
 	std::map<Reg *, Reg *> const &alias;
 	ValueAllocator *regs;
-	std::map<Reg *, VirtualReg *> tmp;
 
 public:
 	explicit PutStack(Function *func, std::map<Reg *, StackVal *> const &r2s, std::map<Reg *, Reg *> const &alias, ValueAllocator *regs)
@@ -62,12 +61,11 @@ public:
 	}
 
 private:
-	VirtualReg *stackVirtVal(Reg *reg) {
-		if (tmp.contains(reg))
-			return tmp.at(reg);
-		auto v = regs->registerVirtualReg();
-		tmp[reg] = v;
-		return v;
+	Reg *stackVirtVal(Reg *reg) {
+		// use the same reg.
+		// to reduce memory use
+		// no need to create a new virtual reg
+		return reg;
 	}
 	Reg *get_src(ASM::Reg *reg) override {
 		if (alias.contains(reg))
