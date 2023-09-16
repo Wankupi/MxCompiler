@@ -11,6 +11,7 @@ namespace IR {
 
 class DefUseCollector : private RewriteLayer {
 public:
+	IR::Wrapper &env;
 	std::set<Var *> use;
 	std::unordered_map<PtrVar *, Val *> def;
 
@@ -20,8 +21,8 @@ private:
 	std::set<PtrVar *> const &allocaVars;
 
 public:
-	explicit DefUseCollector(BasicBlock *basicBlock, std::set<PtrVar *> const &allocaVars, std::unordered_map<Val *, Val *> &globalSub)
-		: workBlock(basicBlock), allocaVars(allocaVars), substitute(globalSub) {}
+	explicit DefUseCollector(BasicBlock *basicBlock, std::set<PtrVar *> const &allocaVars, std::unordered_map<Val *, Val *> &globalSub, IR::Wrapper &wrapper)
+		: workBlock(basicBlock), allocaVars(allocaVars), substitute(globalSub), env(wrapper) {}
 	void calc_def() {
 		for (auto stmt: workBlock->stmts) {
 			if (auto ld = dynamic_cast<LoadStmt *>(stmt)) {
@@ -36,6 +37,8 @@ public:
 					def[ptr] = st->value;
 				}
 			}
+			else if (auto alloca = dynamic_cast<AllocaStmt *>(stmt))
+				def[alloca->res] = env.default_value(alloca->res->objType);
 		}
 	}
 	void work() {
@@ -57,6 +60,7 @@ private:
 
 	void visitAllocaStmt(IR::AllocaStmt *node) override {
 		// discard this stmt
+		def[node->res] = env.default_value(node->res->objType);
 	}
 	void visitStoreStmt(IR::StoreStmt *node) override {
 		// GlobalVar: remember, not remove
@@ -167,7 +171,7 @@ void Mem2RegFunc::work() {
 	build_dom_tree();
 	collect_variables();
 	for (auto block: func->blocks) {
-		trans.emplace(block, DefUseCollector(block, vars, substitute));
+		trans.emplace(block, DefUseCollector(block, vars, substitute, env));
 		trans.at(block).calc_def();
 	}
 
