@@ -135,6 +135,7 @@ class Allocator {
 
 	MvInstSet moves;
 	std::map<Reg *, MvInstSet> moveList;
+	std::map<std::pair<Reg *, Reg *>, std::set<MoveInst *>> moveOfPair;
 
 	ConflictGraph graph;
 
@@ -241,6 +242,7 @@ void Allocator::clear() {
 	liveOut.clear();
 	moves.clear();
 	moveList.clear();
+	moveOfPair.clear();
 	graph.clear();
 	preColored.clear();
 	otherRegs.clear();
@@ -277,6 +279,8 @@ void Allocator::init() {
 				moveList[mv->rd].insert(mv);
 				moveList[mv->rs].insert(mv);
 				moves.insert(mv);
+				moveOfPair[{mv->rd, mv->rs}].insert(mv);
+				moveOfPair[{mv->rs, mv->rd}].insert(mv);
 			}
 }
 
@@ -431,6 +435,9 @@ void Allocator::coalesce() {
 	moveList[rd].merge(moveList[rs]);
 	// merge edges
 	graph.merge_to(rs, rd);
+	// at there, I should remove "mv rs, rd" from frozenMoves
+	for (auto extra_mv: moveOfPair[{mv->rd, mv->rs}])
+		frozenMoves.erase(extra_mv);
 	tryAddToSimplify(rd);
 	remove_from_all_worklist(rs);
 }
